@@ -96,7 +96,11 @@ if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
     exit 1
 fi
 if git ls-remote --tags origin "v${VERSION}" | grep -q "v${VERSION}"; then
-    echo "ERROR: tag v${VERSION} already exists on origin." >&2
+    echo "ERROR: tag v${VERSION} already exists on private origin." >&2
+    exit 1
+fi
+if git ls-remote --tags public "v${VERSION}" 2>/dev/null | grep -q "v${VERSION}"; then
+    echo "ERROR: tag v${VERSION} already exists on public repo." >&2
     exit 1
 fi
 
@@ -176,13 +180,30 @@ fi
 # ---- 5. Tag and push -----------------------------------------------------
 
 if [[ "${DRY_RUN}" == "0" ]]; then
-    echo "==> Tagging v${VERSION} and pushing main + tag"
+    echo "==> Tagging v${VERSION} and pushing main + tag to private"
     git tag -a "v${VERSION}" -m "v${VERSION}"
     git push origin main
     git push origin "v${VERSION}"
+
+    # Wait for the mirror action to push the tag to public.
+    # gh release create will fail if the tag doesn't exist on public yet.
+    echo "==> Waiting for mirror to push tag to public..."
+    for i in $(seq 1 30); do
+        if gh api "repos/darrylmorley/whatcable/git/refs/tags/v${VERSION}" \
+           --jq '.ref' 2>/dev/null; then
+            echo "    Tag v${VERSION} found on public."
+            break
+        fi
+        if [ "$i" -eq 30 ]; then
+            echo "ERROR: tag not found on public after 5 minutes." >&2
+            echo "Check the mirror action: gh run list --repo darrylmorley/whatcable-app" >&2
+            exit 1
+        fi
+        sleep 10
+    done
 fi
 
-# ---- 6. Create the GitHub release ----------------------------------------
+# ---- 6. Create the GitHub release on PUBLIC repo -------------------------
 
 RELEASE_TITLE_FIRST_LINE=$(head -1 "${NOTES_FILE}" | sed -E 's/^#+\s*//')
 if [[ -z "${RELEASE_TITLE_FIRST_LINE}" ]]; then
@@ -192,8 +213,9 @@ else
 fi
 
 if [[ "${DRY_RUN}" == "0" ]]; then
-    echo "==> gh release create v${VERSION}"
+    echo "==> gh release create v${VERSION} on darrylmorley/whatcable"
     gh release create "v${VERSION}" dist/WhatCable.zip \
+        --repo darrylmorley/whatcable \
         --title "${RELEASE_TITLE}" \
         --notes-file "${NOTES_FILE}"
 else
