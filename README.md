@@ -43,6 +43,10 @@ Click the **gear icon** in the popover header to open Settings, where you can:
 
 Right-click the menu bar icon for **Refresh**, a **Keep window open** toggle (handy for screenshots and demos), **Check for Updates…**, **About**, **WhatCable on GitHub**, and **Quit**.
 
+## WhatCable Pro
+
+WhatCable is free and open source. For users who want to go deeper, [WhatCable Pro](https://whatcable.uk/pro) adds live power metering, PD contract inspection, port health counters, pin diagrams, cable resistance estimation, liquid detection status, and a dedicated power monitor window. One-time purchase, works on up to 2 Macs.
+
 ## Install
 
 Visit [whatcable.uk](https://whatcable.uk) for an overview and screenshots, or install directly below.
