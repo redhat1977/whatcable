@@ -140,7 +140,9 @@
 
       .nav-links a:hover { color: var(--ink); }
 
-      .nav .button { padding: 8px 14px; min-height: 36px; font-size: 14px; }
+      .nav .button { padding: 8px 14px; min-height: 36px; font-size: 14px; text-decoration: none; }
+      .nav .button.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+      .nav .button.accent:hover { background: #0a7188; }
 
       /* Buttons */
       .button {
@@ -699,6 +701,7 @@
           <a href="/cables">Cables</a>
           <a href="#install">Install</a>
           <a class="button secondary" href="https://github.com/darrylmorley/whatcable">GitHub</a>
+          <a class="button accent" href="/pro">Get Pro</a>
         </div>
       </div>
     </nav>
@@ -1049,6 +1052,10 @@ brew install --cask whatcable</pre>
           <a href="/cli">CLI</a>
           &nbsp;·&nbsp;
           <a href="/cables">Cables</a>
+          &nbsp;·&nbsp;
+          <a href="/pro">Pro</a>
+          &nbsp;·&nbsp;
+          <a href="/support">Support</a>
           &nbsp;·&nbsp;
           <a href="/privacy">Privacy</a>
           &nbsp;·&nbsp;

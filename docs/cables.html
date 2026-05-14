@@ -111,6 +111,11 @@
       }
       .nav-links a { color: inherit; text-decoration: none; }
       .nav-links a:hover { color: var(--ink); }
+      .nav .btn { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; line-height: 1; text-decoration: none; }
+      .nav .btn-secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+      .nav .btn-secondary:hover { border-color: #c8d0db; }
+      .nav .btn-accent { background: #0c8ca6; color: #fff; border: 1px solid #0c8ca6; }
+      .nav .btn-accent:hover { background: #0a7188; }
 
       main { padding: 48px 0 80px; }
       h1 {
@@ -236,10 +241,22 @@
       .cta strong { color: var(--ink); }
 
       footer {
-        border-top: 1px solid var(--line);
-        padding: 24px 0;
-        color: var(--muted);
-        font-size: 13px;
+        padding: 32px 0;
+        background: #0c1219;
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 13.5px;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      footer .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      footer a { color: rgba(255, 255, 255, 0.85); }
+      footer a:hover { color: #fff; }
+      @media (max-width: 600px) {
+        footer .wrap { flex-direction: column; align-items: flex-start; }
       }
     </style>
   </head>
@@ -254,7 +271,8 @@
           <a href="/instructions">Docs</a>
           <a href="/cli">CLI</a>
           <a href="/cables">Cables</a>
-          <a href="https://github.com/darrylmorley/whatcable">GitHub</a>
+          <a class="btn btn-secondary" href="https://github.com/darrylmorley/whatcable">GitHub</a>
+          <a class="btn btn-accent" href="/pro">Get Pro</a>
         </nav>
       </div>
     </header>
@@ -481,7 +499,22 @@
 
     <footer>
       <div class="wrap">
-        <p>WhatCable. Built by <a href="https://github.com/darrylmorley">Darryl Morley</a>.</p>
+        <span>Built by <a href="https://github.com/darrylmorley">Darryl Morley</a>. MIT licensed.</span>
+        <span>
+          <a href="/instructions">Docs</a>
+          &nbsp;·&nbsp;
+          <a href="/cli">CLI</a>
+          &nbsp;·&nbsp;
+          <a href="/cables">Cables</a>
+          &nbsp;·&nbsp;
+          <a href="/pro">Pro</a>
+          &nbsp;·&nbsp;
+          <a href="/support">Support</a>
+          &nbsp;·&nbsp;
+          <a href="/privacy">Privacy</a>
+          &nbsp;·&nbsp;
+          <a href="https://github.com/darrylmorley/whatcable">View source on GitHub</a>
+        </span>
       </div>
     </footer>
 
