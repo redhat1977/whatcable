@@ -158,6 +158,20 @@
         border-bottom: 1px solid var(--line);
       }
 
+      .hero-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+        gap: 64px;
+        align-items: center;
+      }
+
+      .hero-img img {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow-md);
+      }
+
       .hero::before {
         content: "";
         position: absolute;
@@ -582,6 +596,8 @@
 
       /* Responsive */
       @media (max-width: 860px) {
+        .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+        .hero-img { max-width: 480px; }
         .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .showcase-grid { grid-template-columns: repeat(2, 1fr); }
       }
@@ -615,18 +631,23 @@
 
     <!-- Hero -->
     <section class="hero">
-      <div class="wrap">
-        <div class="eyebrow">
-          <span class="dot-accent"></span>
-          WhatCable Pro
+      <div class="wrap hero-grid">
+        <div>
+          <div class="eyebrow">
+            <span class="dot-accent"></span>
+            WhatCable Pro
+          </div>
+          <h1>Go deeper into every<br><span class="accent">USB-C port and cable</span></h1>
+          <p class="lede">The free app tells you what your cable can do. Pro shows you what it's doing right now - live power, PD contracts, port health, and signal-level diagnostics straight from IOKit.</p>
+          <div class="hero-actions">
+            <button class="button accent lg" id="buy-hero">Buy Pro - £4.99</button>
+            <a href="#features" class="button secondary lg">See what's included</a>
+          </div>
+          <p class="price-note">One-time purchase. Works on up to 2 Macs. macOS 14+ required.</p>
         </div>
-        <h1>Go deeper into every<br><span class="accent">USB-C port and cable</span></h1>
-        <p class="lede">The free app tells you what your cable can do. Pro shows you what it's doing right now - live power, PD contracts, port health, and signal-level diagnostics straight from IOKit.</p>
-        <div class="hero-actions">
-          <button class="button accent lg" id="buy-hero">Buy Pro - £4.99</button>
-          <a href="#features" class="button secondary lg">See what's included</a>
+        <div class="hero-img">
+          <img src="screenshot.webp" alt="WhatCable menu bar popover showing USB-C port diagnostics">
         </div>
-        <p class="price-note">One-time purchase. Works on up to 2 Macs. macOS 14+ required.</p>
       </div>
     </section>
 
