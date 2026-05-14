@@ -172,7 +172,7 @@ cp .env.example .env
 
 ## Linux port
 
-[@abrauchli](https://github.com/abrauchli) built a Rust port for Linux called [usbeehive](https://github.com/abrauchli/usbeehive). Really nice work. Install it with `cargo install usbeehive`. It started life as a `whatcable` crate on crates.io before being renamed to avoid confusion with this repo.
+[@abrauchli](https://github.com/abrauchli) built a Rust port for Linux called [usbeehive](https://github.com/abrauchli/usbeehive). Really nice work. Install it with `cargo install usbeehive`. It started life as a `whatcable` crate on crates.io before being renamed to avoid confusion with this repo. He's also working on [usbee](https://github.com/abrauchli/usbee), a GNOME UI for it (early stage, but the basics work).
 
 ## Privacy
 
