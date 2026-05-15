@@ -1,4 +1,5 @@
 import SwiftUI
+import WhatCablePlugins
 
 /// Settings panel shown in place of the main popover content. Pushes a
 /// "Done" header and groups toggles by purpose. All preferences live on
@@ -38,6 +39,7 @@ struct SettingsView: View {
 
 struct SettingsForm: View {
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var licence = LicenceManager.shared
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -84,6 +86,12 @@ struct SettingsForm: View {
             }
             section(String(localized: "Notifications", bundle: _appLocalizedBundle)) {
                 Toggle(String(localized: "Notify on cable changes", bundle: _appLocalizedBundle), isOn: $settings.notifyOnChanges)
+            }
+            if !licence.isUnlocked {
+                section(String(localized: "Pro", bundle: _appLocalizedBundle)) {
+                    Link(String(localized: "Upgrade to WhatCable Pro", bundle: _appLocalizedBundle),
+                         destination: URL(string: "https://www.whatcable.uk/pro")!)
+                }
             }
         }
     }
