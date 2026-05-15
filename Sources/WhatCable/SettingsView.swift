@@ -1,4 +1,5 @@
 import SwiftUI
+import WhatCableAppKit
 
 /// Settings panel shown in place of the main popover content. Pushes a
 /// "Done" header and groups toggles by purpose. All preferences live on
@@ -85,8 +86,15 @@ struct SettingsForm: View {
                 Toggle(String(localized: "Notify on cable changes", bundle: _appLocalizedBundle), isOn: $settings.notifyOnChanges)
             }
             section(String(localized: "Pro", bundle: _appLocalizedBundle)) {
-                Link(String(localized: "Upgrade to WhatCable Pro", bundle: _appLocalizedBundle),
-                     destination: URL(string: "https://www.whatcable.uk/pro")!)
+                let builders = PluginRegistry.shared.settingsProSectionBuilders
+                if builders.isEmpty {
+                    Link(String(localized: "Upgrade to WhatCable Pro", bundle: _appLocalizedBundle),
+                         destination: URL(string: "https://www.whatcable.uk/pro")!)
+                } else {
+                    ForEach(builders.indices, id: \.self) { i in
+                        builders[i]()
+                    }
+                }
             }
         }
     }

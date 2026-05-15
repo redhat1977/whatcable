@@ -35,6 +35,7 @@ final class WidgetDataWriter {
     private let pdWatcher = PDIdentityWatcher()
     private let tbWatcher = ThunderboltWatcher()
     private let usb3Watcher = USB3TransportWatcher()
+    private let trmWatcher = TRMTransportWatcher()
 
     private var cancellables = Set<AnyCancellable>()
     private var writeTask: Task<Void, Never>?
@@ -61,6 +62,7 @@ final class WidgetDataWriter {
         pdWatcher.start()
         tbWatcher.start()
         usb3Watcher.start()
+        trmWatcher.start()
 
         // Write an initial snapshot once watchers have had a tick to populate.
         DispatchQueue.main.async { [weak self] in
@@ -95,6 +97,11 @@ final class WidgetDataWriter {
             .store(in: &cancellables)
 
         usb3Watcher.$transports
+            .dropFirst()
+            .sink { [weak self] _ in self?.scheduleWrite() }
+            .store(in: &cancellables)
+
+        trmWatcher.$cioCapabilities
             .dropFirst()
             .sink { [weak self] _ in self?.scheduleWrite() }
             .store(in: &cancellables)
@@ -184,6 +191,7 @@ final class WidgetDataWriter {
                 devices: devices,
                 thunderboltSwitches: tbWatcher.switches,
                 usb3Transports: usb3Watcher.transports(for: port),
+                cioCapability: trmWatcher.cioCapabilities.first { $0.portKey == port.portKey },
                 isConnectedOverride: isLive
             )
 

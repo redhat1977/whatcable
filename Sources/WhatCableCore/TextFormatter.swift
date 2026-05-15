@@ -10,7 +10,8 @@ public enum TextFormatter {
         thunderboltSwitches: [ThunderboltSwitch] = [],
         isDesktopMac: Bool = false,
         federatedIdentities: [FederatedIdentity] = [],
-        usb3Transports: [USB3Transport] = []
+        usb3Transports: [USB3Transport] = [],
+        cioCapabilities: [CIOCableCapability] = []
     ) -> String {
         if ports.isEmpty {
             return String(localized: "No USB-C / MagSafe ports were found on this Mac.", bundle: _coreLocalizedBundle) + "\n"
@@ -30,7 +31,8 @@ public enum TextFormatter {
                 adapter: adapter,
                 thunderboltSwitches: thunderboltSwitches,
                 federatedIdentities: federatedIdentities,
-                usb3Transports: usb3Transports.filter { $0.portKey == port.portKey }
+                usb3Transports: usb3Transports.filter { $0.portKey == port.portKey },
+                cioCapability: cioCapabilities.first { $0.portKey == port.portKey }
             )
         }
         return out
@@ -44,7 +46,8 @@ public enum TextFormatter {
         adapter: AdapterInfo?,
         thunderboltSwitches: [ThunderboltSwitch],
         federatedIdentities: [FederatedIdentity] = [],
-        usb3Transports: [USB3Transport] = []
+        usb3Transports: [USB3Transport] = [],
+        cioCapability: CIOCableCapability? = nil
     ) -> String {
         let summary = PortSummary(
             port: port,
@@ -52,7 +55,8 @@ public enum TextFormatter {
             identities: identities,
             thunderboltSwitches: thunderboltSwitches,
             federatedIdentities: federatedIdentities,
-            usb3Transports: usb3Transports
+            usb3Transports: usb3Transports,
+            cioCapability: cioCapability
         )
         let label = port.portDescription ?? port.serviceName
         let typeSuffix = port.portTypeDescription.map { " (\($0))" } ?? ""

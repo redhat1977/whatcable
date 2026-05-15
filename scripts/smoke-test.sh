@@ -24,8 +24,8 @@ fi
 
 APP_NAME="WhatCable"
 BUNDLE_ID="uk.whatcable.whatcable"
-VERSION="0.10.8"
-BUILD_NUMBER="50"
+VERSION="0.10.9"
+BUILD_NUMBER="51"
 MIN_OS="14.0"
 CLI_PRODUCT="whatcable-cli"
 CLI_BIN_NAME="whatcable"
@@ -208,6 +208,7 @@ if [[ -n "${DEVELOPER_ID}" ]]; then
         "${APP_DIR}"
 else
     echo "==> Ad-hoc signing (no DEVELOPER_ID set)"
+    codesign --force --sign - "${HELPERS_DIR}/${CLI_BIN_NAME}"
     codesign --force --entitlements "${WIDGET_ENTITLEMENTS}" \
         --sign - "${PLUGINS_DIR}/${WIDGET_APPEX}"
     codesign --force --entitlements "${ENTITLEMENTS}" \

@@ -9,8 +9,8 @@ import Foundation
 /// 2M) report "passive" in their e-marker while the CIO controller
 /// correctly identifies their TB capability.
 ///
-/// Value mappings are based on limited data (one TB4 cable so far) and
-/// need confirmation with more cables before driving user-facing labels.
+/// Value mappings are based on four confirmed TB4 data points and need
+/// TB3/TB5 samples before the full mapping is complete.
 public struct CIOCableCapability: Identifiable, Hashable, Sendable {
     public let id: UInt64
     /// Port correlation key matching `PowerSource.portKey`.
@@ -50,5 +50,19 @@ public struct CIOCableCapability: Identifiable, Hashable, Sendable {
         self.asymmetricModeSupported = asymmetricModeSupported
         self.legacyAdapter = legacyAdapter
         self.linkTrainingMode = linkTrainingMode
+    }
+
+    /// Human-readable speed label for a confirmed `cableSpeed` value,
+    /// or `nil` when the code is unrecognised.
+    ///
+    /// Based on four confirmed TB4 data points (cableSpeed=3 on cables
+    /// linking at 40 Gbps). Returns `nil` for unknown codes so callers
+    /// can fall back to a generic bullet rather than leaking raw IOKit
+    /// numbers into user-facing text.
+    public static func speedLabel(for cableSpeed: Int) -> String? {
+        switch cableSpeed {
+        case 3: return String(localized: "40 Gbps capable", bundle: _coreLocalizedBundle)
+        default: return nil
+        }
     }
 }

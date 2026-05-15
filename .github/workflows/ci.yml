@@ -22,6 +22,85 @@ jobs:
       - name: Run tests
         run: swift test
 
+  pro-boundary:
+    name: Pro boundary check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Simulate mirror and verify no Pro code leaks
+        run: |
+          # Reproduce the mirror script's filtering logic and check the
+          # resulting tree for anything that should not reach the public repo.
+
+          FILTER_DIR=$(mktemp -d)
+          trap 'rm -rf "$FILTER_DIR"' EXIT
+
+          # Export tracked files only (same as mirror-to-public.sh)
+          git archive HEAD | tar -x -C "$FILTER_DIR"
+
+          # Apply .public-exclude
+          while IFS= read -r line; do
+            line="${line%%#*}"
+            line="${line// /}"
+            [ -z "$line" ] && continue
+            rm -rf "$FILTER_DIR/$line"
+          done < .public-exclude
+
+          # Restore the no-op plugin stub
+          mkdir -p "$FILTER_DIR/Sources/WhatCablePlugins"
+          cp .mirror/WhatCablePlugins-stub/Bootstrap.swift \
+             "$FILTER_DIR/Sources/WhatCablePlugins/Bootstrap.swift"
+
+          # Restore the public Package.swift
+          cp .mirror/Package.swift.public "$FILTER_DIR/Package.swift"
+
+          FAIL=0
+
+          # 1. Plugin stub must be the only file in WhatCablePlugins
+          PLUGIN_FILES=$(find "$FILTER_DIR/Sources/WhatCablePlugins" -type f | sort)
+          EXPECTED="$FILTER_DIR/Sources/WhatCablePlugins/Bootstrap.swift"
+          if [ "$PLUGIN_FILES" != "$EXPECTED" ]; then
+            echo "::error::WhatCablePlugins contains more than the stub:"
+            echo "$PLUGIN_FILES"
+            FAIL=1
+          fi
+
+          # 2. No Pro test files should survive
+          if [ -d "$FILTER_DIR/Tests/WhatCablePluginsTests" ]; then
+            echo "::error::Tests/WhatCablePluginsTests leaked into the filtered tree"
+            FAIL=1
+          fi
+
+          # 3. No private-only files should survive
+          for path in .public-exclude .env .mirror scripts/mirror-to-public.sh; do
+            if [ -e "$FILTER_DIR/$path" ]; then
+              echo "::error::$path leaked into the filtered tree"
+              FAIL=1
+            fi
+          done
+
+          # 4. No Pro planning docs should survive
+          if ls "$FILTER_DIR"/planning/pro-* >/dev/null 2>&1; then
+            echo "::error::planning/pro-* docs leaked into the filtered tree"
+            FAIL=1
+          fi
+
+          # 5. Public Package.swift must not reference WhatCablePluginsTests
+          if grep -q 'WhatCablePluginsTests' "$FILTER_DIR/Package.swift"; then
+            echo "::error::Public Package.swift still references WhatCablePluginsTests"
+            FAIL=1
+          fi
+
+          if [ "$FAIL" -eq 1 ]; then
+            exit 1
+          fi
+
+          echo "Mirror simulation passed. No Pro code leaks detected."
+
   lint-scripts:
     name: Shell script syntax
     runs-on: ubuntu-latest

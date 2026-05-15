@@ -75,6 +75,7 @@ struct ContentView: View {
     @StateObject private var pdWatcher = PDIdentityWatcher()
     @StateObject private var tbWatcher = ThunderboltWatcher()
     @StateObject private var usb3Watcher = USB3TransportWatcher()
+    @StateObject private var trmWatcher = TRMTransportWatcher()
     @EnvironmentObject private var refresh: RefreshSignal
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var updates = UpdateChecker.shared
@@ -102,6 +103,7 @@ struct ContentView: View {
             pdWatcher.start()
             tbWatcher.start()
             usb3Watcher.start()
+            trmWatcher.start()
             startPortPoll()
             isDesktopMac = SmartBatteryReader.read().isDesktopMac
         }
@@ -116,6 +118,7 @@ struct ContentView: View {
             pdWatcher.stop()
             tbWatcher.stop()
             usb3Watcher.stop()
+            trmWatcher.stop()
         }
         .onChange(of: refresh.tick) { _, _ in
             portWatcher.refresh()
@@ -123,6 +126,7 @@ struct ContentView: View {
             pdWatcher.refresh()
             tbWatcher.refresh()
             usb3Watcher.refresh()
+            trmWatcher.refresh()
         }
         // Port controller services don't fire IOKit match notifications when
         // their connection state flips, so we re-poll the port watcher
@@ -206,7 +210,8 @@ struct ContentView: View {
                                 thunderboltSwitches: tbWatcher.switches,
                                 usb3Transports: usb3Watcher.transports(for: port),
                                 isLive: isPortLive(port),
-                                showAdvanced: showAdvanced
+                                showAdvanced: showAdvanced,
+                                cioCapability: trmWatcher.cioCapabilities.first { $0.portKey == port.portKey }
                             )
                         }
                     }
@@ -427,6 +432,7 @@ struct PortCard: View {
     /// `port.connectionActive` property.
     let isLive: Bool
     let showAdvanced: Bool
+    let cioCapability: CIOCableCapability?
 
     @State private var reportingCable: PDIdentity?
 
@@ -438,6 +444,7 @@ struct PortCard: View {
             devices: devices,
             thunderboltSwitches: thunderboltSwitches,
             usb3Transports: usb3Transports,
+            cioCapability: cioCapability,
             isConnectedOverride: isLive
         )
     }

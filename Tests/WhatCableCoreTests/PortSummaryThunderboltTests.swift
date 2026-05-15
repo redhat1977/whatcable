@@ -318,6 +318,111 @@ final class PortSummaryThunderboltTests: XCTestCase {
         )
     }
 
+    // MARK: - CIO cable capability (issue #111)
+
+    /// When CIO data is present with a known speed code, PortSummary should
+    /// replace the generic passive/TB fallback with a "Controller confirms"
+    /// bullet plus an explanation of why the e-marker says passive.
+    func testCIOConfirmsTBCableReplacesPassiveBullet() {
+        let port = tbPort(socket: "1")
+        let host = sw(
+            uid: 100, depth: 0, parent: nil,
+            vendor: "Apple Inc.", model: "iOS",
+            ports: [lanePort(portNumber: 1, socketID: "1", speed: .usb4Tb4, widthRaw: 0x2)]
+        )
+        let cable = passiveCableIdentity()
+        let cio = CIOCableCapability(
+            id: 1, portKey: "1",
+            cableGeneration: 2, cableSpeed: 3, generation: 3,
+            asymmetricModeSupported: false, legacyAdapter: false,
+            linkTrainingMode: nil
+        )
+
+        let summary = PortSummary(
+            port: port,
+            identities: [cable],
+            thunderboltSwitches: [host],
+            cioCapability: cio
+        )
+
+        XCTAssertTrue(
+            summary.bullets.contains { $0.contains("Controller confirms Thunderbolt cable") && $0.contains("40 Gbps") },
+            "expected CIO confirmation bullet; got: \(summary.bullets)"
+        )
+        XCTAssertTrue(
+            summary.bullets.contains { $0.contains("E-marker reports passive because") },
+            "expected educational explanation bullet; got: \(summary.bullets)"
+        )
+        XCTAssertFalse(
+            summary.bullets.contains { $0.contains("Thunderbolt is negotiated separately") },
+            "old fallback bullet should be gone when CIO confirms; got: \(summary.bullets)"
+        )
+    }
+
+    /// When CIO data is present but the speed code is unrecognised, fall back
+    /// to the existing passive/TB clarification (don't leak raw codes).
+    func testCIOWithUnknownSpeedCodeFallsBackToPassiveBullet() {
+        let port = tbPort(socket: "1")
+        let host = sw(
+            uid: 100, depth: 0, parent: nil,
+            vendor: "Apple Inc.", model: "iOS",
+            ports: [lanePort(portNumber: 1, socketID: "1", speed: .usb4Tb4, widthRaw: 0x2)]
+        )
+        let cable = passiveCableIdentity()
+        // Speed code 99 is not in our confirmed mapping.
+        let cio = CIOCableCapability(
+            id: 1, portKey: "1",
+            cableGeneration: nil, cableSpeed: 99, generation: nil,
+            asymmetricModeSupported: nil, legacyAdapter: nil,
+            linkTrainingMode: nil
+        )
+
+        let summary = PortSummary(
+            port: port,
+            identities: [cable],
+            thunderboltSwitches: [host],
+            cioCapability: cio
+        )
+
+        XCTAssertTrue(
+            summary.bullets.contains { $0.contains("E-marker reports passive") && $0.contains("Thunderbolt is negotiated separately") },
+            "unknown CIO speed should fall back to passive/TB clarification; got: \(summary.bullets)"
+        )
+        XCTAssertFalse(
+            summary.bullets.contains { $0.contains("Controller confirms") },
+            "should not show CIO confirmation for unknown speed code; got: \(summary.bullets)"
+        )
+    }
+
+    /// When CIO data exists but has no cableSpeed at all, fall back.
+    func testCIOWithNilSpeedFallsBackToPassiveBullet() {
+        let port = tbPort(socket: "1")
+        let host = sw(
+            uid: 100, depth: 0, parent: nil,
+            vendor: "Apple Inc.", model: "iOS",
+            ports: [lanePort(portNumber: 1, socketID: "1", speed: .usb4Tb4, widthRaw: 0x2)]
+        )
+        let cable = passiveCableIdentity()
+        let cio = CIOCableCapability(
+            id: 1, portKey: "1",
+            cableGeneration: nil, cableSpeed: nil, generation: nil,
+            asymmetricModeSupported: nil, legacyAdapter: nil,
+            linkTrainingMode: nil
+        )
+
+        let summary = PortSummary(
+            port: port,
+            identities: [cable],
+            thunderboltSwitches: [host],
+            cioCapability: cio
+        )
+
+        XCTAssertTrue(
+            summary.bullets.contains { $0.contains("Thunderbolt is negotiated separately") },
+            "nil CIO speed should fall back; got: \(summary.bullets)"
+        )
+    }
+
     func testActiveCableWithTBLinkDoesNotShowPassiveNote() {
         let port = tbPort(socket: "1")
         let host = sw(

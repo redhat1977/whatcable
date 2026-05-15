@@ -41,6 +41,7 @@ extension PortSummary {
         thunderboltSwitches: [ThunderboltSwitch] = [],
         federatedIdentities: [FederatedIdentity] = [],
         usb3Transports: [USB3Transport] = [],
+        cioCapability: CIOCableCapability? = nil,
         isConnectedOverride: Bool? = nil
     ) {
         let connected = isConnectedOverride ?? (port.connectionActive == true)
@@ -211,7 +212,19 @@ extension PortSummary {
                     bullets.append(String(localized: "Active cable (contains signal-conditioning electronics)", bundle: _coreLocalizedBundle))
                 }
             } else if cv.cableType == .passive && hasTB {
-                bullets.append(String(localized: "E-marker reports passive (no USB signal conditioning). Thunderbolt is negotiated separately by the controller.", bundle: _coreLocalizedBundle))
+                if let cio = cioCapability,
+                   let speed = cio.cableSpeed,
+                   let label = CIOCableCapability.speedLabel(for: speed) {
+                    // CIO controller confirms the cable's TB capability.
+                    // Show the confirmed speed and a short explanation of
+                    // why the e-marker says "passive".
+                    bullets.append(String(localized: "Controller confirms Thunderbolt cable (\(label))", bundle: _coreLocalizedBundle))
+                    bullets.append(String(localized: "E-marker reports passive because the cable's active components condition the Thunderbolt signal path, not the USB path.", bundle: _coreLocalizedBundle))
+                } else {
+                    // No CIO data (or unrecognised speed code): keep the
+                    // existing educational fallback.
+                    bullets.append(String(localized: "E-marker reports passive (no USB signal conditioning). Thunderbolt is negotiated separately by the controller.", bundle: _coreLocalizedBundle))
+                }
             }
         }
 

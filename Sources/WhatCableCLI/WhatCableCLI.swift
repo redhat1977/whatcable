@@ -119,7 +119,8 @@ private func printSnapshot(_ snapshot: CableSnapshot, asJSON: Bool, showRaw: Boo
             thunderboltSwitches: snapshot.thunderboltSwitches,
             isDesktopMac: snapshot.isDesktopMac,
             federatedIdentities: snapshot.federatedIdentities,
-            usb3Transports: snapshot.usb3Transports
+            usb3Transports: snapshot.usb3Transports,
+            cioCapabilities: snapshot.cioCapabilities
         )
         print(output, terminator: "")
     }
@@ -187,7 +188,8 @@ private func consumeWatchStream(provider: any CableSnapshotProvider, asJSON: Boo
                     thunderboltSwitches: snapshot.thunderboltSwitches,
                     isDesktopMac: snapshot.isDesktopMac,
                     federatedIdentities: snapshot.federatedIdentities,
-                    usb3Transports: snapshot.usb3Transports
+                    usb3Transports: snapshot.usb3Transports,
+                    cioCapabilities: snapshot.cioCapabilities
                 )
             }
 

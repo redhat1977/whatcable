@@ -108,7 +108,8 @@ private struct PortDTO: Codable {
             identities: identities,
             thunderboltSwitches: thunderboltSwitches,
             federatedIdentities: federatedIdentities,
-            usb3Transports: usb3Transports
+            usb3Transports: usb3Transports,
+            cioCapability: cioCapability
         )
         self.status = String(describing: summary.status)
         self.headline = summary.headline

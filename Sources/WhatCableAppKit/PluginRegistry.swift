@@ -41,4 +41,9 @@ public final class PluginRegistry {
     public func register(cliCommand: CLICommand) {
         cliCommands.append(cliCommand)
     }
+
+    public private(set) var settingsProSectionBuilders: [() -> AnyView] = []
+    public func register(settingsProSection: @escaping () -> AnyView) {
+        settingsProSectionBuilders.append(settingsProSection)
+    }
 }
