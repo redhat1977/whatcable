@@ -245,6 +245,14 @@
         color: var(--ink-soft);
         line-height: 1.6;
       }
+      @media (max-width: 600px) {
+        .nav-links a:not(.btn) { display: none; }
+        .nav-links { gap: 12px; }
+        .nav .btn { padding: 8px 12px; font-size: 13px; }
+        h1 { font-size: 24px; }
+        .support-form { padding: 24px 20px; }
+        .support-form input, .support-form textarea, .support-form select { font-size: 16px; }
+      }
     </style>
   </head>
   <body>

@@ -633,10 +633,18 @@
       }
 
       @media (max-width: 600px) {
+        .nav-links a:not(.btn) { display: none; }
+        .nav-links { gap: 12px; }
+        .nav .btn { padding: 8px 12px; font-size: 13px; }
+        .hero h1 { font-size: 28px; }
+        .hero p.lede { font-size: 16px; }
+        .hero-actions { flex-direction: column; }
+        .hero-actions .button { width: 100%; }
         .feature-grid { grid-template-columns: 1fr; }
         .showcase-grid { grid-template-columns: 1fr; max-width: 380px; margin: 0 auto; }
         .compare-table th, .compare-table td { padding: 12px 14px; font-size: 13.5px; }
         .pricing-card { padding: 28px 24px; }
+        .cta h2 { font-size: 24px; }
       }
     </style>
   </head>
