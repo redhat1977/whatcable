@@ -43,12 +43,13 @@ Click the **gear icon** in the popover header to open Settings, where you can:
 - Adjust the font size
 - Switch language (English, Armenian, Italian, Polish, Simplified Chinese, or follow your system default)
 - Get notifications when cables are connected or disconnected
+- Contribute anonymised port and power diagnostics to improve hardware coverage (opt-in, manual)
 
 Right-click the menu bar icon for **Refresh**, a **Keep window open** toggle (handy for screenshots and demos), **Check for Updates…**, **About**, **WhatCable on GitHub**, and **Quit**.
 
 ## WhatCable Pro
 
-WhatCable is free and open source. If you find it useful, you can support the project by picking up [WhatCable Pro](https://whatcable.uk/pro), which unlocks a ton of extra features: live power metering, PD contract inspection, port health counters, pin diagrams, cable resistance estimation, liquid detection status, and a dedicated power monitor window. One-time purchase, works on up to 2 Macs.
+WhatCable is free and open source. If you find it useful, you can support the project by picking up [WhatCable Pro](https://whatcable.uk/pro), which unlocks a ton of extra features: live power metering, PD contract inspection, port health counters, pin diagrams, cable resistance estimation, liquid detection status, and a dedicated power monitor window with a live system power-input graph that shows every physical port and its real negotiated contract, even on Macs that don't expose live per-port metering. One-time purchase, works on up to 2 Macs.
 
 [![Buy WhatCable Pro](https://img.shields.io/badge/Buy%20WhatCable%20Pro-%C2%A34.99-orange?style=for-the-badge)](https://whatcable.uk/pro)
 
@@ -204,6 +205,8 @@ WhatCable reads USB-C port state directly from IOKit on your Mac. All of that ha
 **Cable reports:** If you use the "Report this cable" button on an e-marked cable, WhatCable builds a pre-filled GitHub issue containing the cable's vendor ID, product ID, and capability flags (VDOs). Your browser opens with that data in the issue form. Nothing is submitted until you click the button in GitHub yourself. Once submitted, the issue is public.
 
 **Update checks:** WhatCable periodically checks the GitHub Releases API to see if a newer version is available. No personal data or hardware info is included in that request.
+
+**Diagnostic data:** Settings has an opt-in **Contribute Diagnostic Data** button. When you press it, WhatCable collects anonymised USB-C port and power IOKit details from your Mac and submits them to help improve hardware coverage. It only runs when you click it; nothing is collected or sent unless you choose to.
 
 ## Contributing
 
