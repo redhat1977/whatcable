@@ -294,20 +294,6 @@
     "xid" : "none"
   },
   {
-    "brand" : "AGFINEST USB4\/TB5 cable 3.94 ft (ULT-unite ODM)",
-    "cableVDO" : "0x000A4644",
-    "issueNum" : "#151",
-    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/151",
-    "pid" : "0x0000",
-    "power" : "5 A \/ 50 V (250 W)",
-    "registered" : true,
-    "speed" : "USB4 Gen 4 (80 Gbps, Thunderbolt 5 class)",
-    "type" : "passive",
-    "vendor" : "Dongguan ULT-unite Electronic Technology Co., LTD",
-    "vid" : "0x2BD3",
-    "xid" : "none"
-  },
-  {
     "brand" : "Dbilida TB4-branded 240 W cable, Amazon (no USB-IF cert)",
     "cableVDO" : "",
     "issueNum" : "#49",
@@ -320,20 +306,6 @@
     "vendor" : "Hynetek Semiconductor Co., Ltd",
     "vid" : "0x2E99",
     "xid" : "none"
-  },
-  {
-    "brand" : "Anker PowerLine III Flow USB-C 100 W 1.8 m, Amazon",
-    "cableVDO" : "0x00084040",
-    "issueNum" : "#152",
-    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/152",
-    "pid" : "0x0000",
-    "power" : "5 A \/ 20 V (100 W)",
-    "registered" : true,
-    "speed" : "USB 2.0 (480 Mbps)",
-    "type" : "passive",
-    "vendor" : "Hynetek Semiconductor Co., Ltd",
-    "vid" : "0x2E99",
-    "xid" : "0x1514"
   },
   {
     "brand" : "Satechi Thunderbolt 5 cable 1 m",
