@@ -83,19 +83,28 @@ public final class USB3TransportWatcher: ObservableObject {
         var entryID: UInt64 = 0
         IORegistryEntryGetRegistryEntryID(service, &entryID)
 
-        var props: Unmanaged<CFMutableDictionary>?
-        guard IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-              let dict = props?.takeRetainedValue() as? [String: Any] else {
-            return nil
+        // Read keys individually rather than fetching the full property
+        // dictionary. The bulk fetch (IORegistryEntryCreateCFProperties)
+        // can abort the process from inside IOCFUnserializeBinary when
+        // the kernel returns a malformed serialised properties blob,
+        // typically when the service is being torn down mid-read. The
+        // per-key call has no such failure path. See issue #181.
+        func read(_ key: String) -> Any? {
+            IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
         }
 
-        let parent = Self.parentPortIdentity(from: dict)
-        let portKey = "\(parent.type)/\(parent.number)"
+        let parentType = (read("ParentBuiltInPortType") as? NSNumber)?.intValue
+            ?? (read("ParentPortType") as? NSNumber)?.intValue
+            ?? 0
+        let parentNumber = (read("ParentBuiltInPortNumber") as? NSNumber)?.intValue
+            ?? (read("ParentPortNumber") as? NSNumber)?.intValue
+            ?? Int(((read("Priority") as? NSNumber)?.uint64Value ?? 0) & 0xFF)
+        let portKey = "\(parentType)/\(parentNumber)"
 
-        let signaling = (dict["SuperSpeedSignaling"] as? NSNumber)?.intValue
-        let signalingDesc = dict["SuperSpeedSignalingDescription"] as? String
-        let dataRole = (dict["DataRole"] as? String)
-            ?? (dict["PortDataRole"] as? String)
+        let signaling = (read("SuperSpeedSignaling") as? NSNumber)?.intValue
+        let signalingDesc = read("SuperSpeedSignalingDescription") as? String
+        let dataRole = (read("DataRole") as? String)
+            ?? (read("PortDataRole") as? String)
 
         return USB3Transport(
             id: entryID,
@@ -104,18 +113,6 @@ public final class USB3TransportWatcher: ObservableObject {
             signalingDescription: signalingDesc,
             dataRole: dataRole
         )
-    }
-
-    /// Reads the parent port type and number from the service's properties.
-    /// Same approach as `PowerSourceWatcher.parentPortIdentity(from:)`.
-    nonisolated static func parentPortIdentity(from dict: [String: Any]) -> (type: Int, number: Int) {
-        let type = (dict["ParentBuiltInPortType"] as? NSNumber)?.intValue
-            ?? (dict["ParentPortType"] as? NSNumber)?.intValue
-            ?? 0
-        let number = (dict["ParentBuiltInPortNumber"] as? NSNumber)?.intValue
-            ?? (dict["ParentPortNumber"] as? NSNumber)?.intValue
-            ?? Int(((dict["Priority"] as? NSNumber)?.uint64Value ?? 0) & 0xFF)
-        return (type, number)
     }
 }
 
