@@ -3,7 +3,6 @@ name: Deploy Pages
 on:
   push:
     branches: [main]
-    paths: [docs/**]
   workflow_dispatch:
 
 permissions:
@@ -16,7 +15,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Deploy to GitHub Pages
+    name: Build and deploy to GitHub Pages
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -26,6 +25,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: false
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build site
+        run: bun run site:build
 
       - uses: actions/configure-pages@v5
 
