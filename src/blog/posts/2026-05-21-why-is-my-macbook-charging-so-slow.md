@@ -1,6 +1,7 @@
 ---
 title: Why is my MacBook charging so slow? A real diagnosis.
 slug: why-is-my-macbook-charging-so-slow
+date: 2026-05-21
 summary: macOS now tells you when your charger is slow. It doesn't tell you why.
   Here's how to actually work out what's holding back your MacBook charging.
 category: Guides
@@ -96,6 +97,8 @@ This is what [WhatCable](/) was built for. It sits in the menu bar and reads wha
 * The active PD contract (volts and amps being negotiated right now)
 * What the port itself can do
 * Where the bottleneck is, if there is one
+
+![WhatCable showing the active PD contract — 20V at 2.99A (60W) — alongside the cable's e-marker rating of 250W, confirming the cable is not the bottleneck](https://images.whatcable.uk/1779373950977-screenshot-2026-05-19-at-22-02-19.webp "WhatCable reading the active power contract and cable e-marker")
 
 A healthy reading on a 16" MBP with a 140W adapter and a 240W USB4 cable: 20V at around 5A, cable rated for 240W, port rated for 140W. Everything matches.
 
