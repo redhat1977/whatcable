@@ -33,4 +33,37 @@ echo "=> Building site with Eleventy..."
 bun run site:build
 
 echo ""
+echo "=> Copying blog post assets..."
+# Each post in src/blog/posts/ can have a sibling folder of the same
+# slug (with date prefix) holding images and other assets. We copy
+# those into docs/blog/<slug>/ with the date prefix stripped so the
+# URL matches the rendered post URL.
+#
+# Example layout:
+#   src/blog/posts/2026-06-01-tb5-deep-dive.md
+#   src/blog/posts/2026-06-01-tb5-deep-dive/
+#     diagram.webp
+#   -> docs/blog/tb5-deep-dive/diagram.webp
+#
+# Reference in markdown as /blog/tb5-deep-dive/diagram.webp.
+shopt -s nullglob
+copied=0
+for asset_dir in src/blog/posts/*/; do
+  dir_name="${asset_dir%/}"
+  dir_name="${dir_name##*/}"
+  slug="${dir_name#[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-}"
+  if [ "$slug" = "$dir_name" ]; then
+    echo "  skipping $dir_name (no YYYY-MM-DD- prefix)"
+    continue
+  fi
+  mkdir -p "docs/blog/$slug"
+  for asset in "$asset_dir"*; do
+    [ -f "$asset" ] || continue
+    cp "$asset" "docs/blog/$slug/"
+    copied=$((copied + 1))
+  done
+done
+echo "  $copied asset(s) copied"
+
+echo ""
 echo "Site build complete. Output in docs/."
