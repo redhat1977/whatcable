@@ -27,7 +27,8 @@ export default async function (eleventyConfig) {
   eleventyConfig.addFilter("cleanUrl", (url) => {
     const u = String(url);
     if (u === "/") return "/";
-    return u.replace(/\/$/, "");
+    // Strip .html extension (posts now output as filename.html) then trailing slash.
+    return u.replace(/\.html$/, "").replace(/\/$/, "");
   });
 
   eleventyConfig.addFilter("isoDate", (date) => new Date(date).toISOString());
@@ -80,10 +81,9 @@ export default async function (eleventyConfig) {
     if (!this.page.outputPath || !this.page.outputPath.endsWith("feed.xml")) {
       return content;
     }
-    return content.replace(
-      /(https?:\/\/[^\s"<>]+?)\/(?=["<\s])/g,
-      "$1"
-    );
+    return content
+      .replace(/(https?:\/\/[^\s"<>]+?)\.html(?=["<\s])/g, "$1")
+      .replace(/(https?:\/\/[^\s"<>]+?)\/(?=["<\s])/g, "$1");
   });
 
   eleventyConfig.addPassthroughCopy("src/icon.png");

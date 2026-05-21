@@ -56,6 +56,7 @@
 &lt;li&gt;What the port itself can do&lt;/li&gt;
 &lt;li&gt;Where the bottleneck is, if there is one&lt;/li&gt;
 &lt;/ul&gt;
+&lt;p&gt;&lt;img src=&quot;https://images.whatcable.uk/1779373950977-screenshot-2026-05-19-at-22-02-19.webp&quot; alt=&quot;WhatCable showing the active PD contract — 20V at 2.99A (60W) — alongside the cable&#39;s e-marker rating of 250W, confirming the cable is not the bottleneck&quot; title=&quot;WhatCable reading the active power contract and cable e-marker&quot;&gt;&lt;/p&gt;
 &lt;p&gt;A healthy reading on a 16&amp;quot; MBP with a 140W adapter and a 240W USB4 cable: 20V at around 5A, cable rated for 240W, port rated for 140W. Everything matches.&lt;/p&gt;
 &lt;p&gt;A throttled reading on the same setup but with a wrong cable: 20V at 3A, cable rated for 60W, port still rated for 140W. The cable is the bottleneck and you can see it.&lt;/p&gt;
 &lt;p&gt;That&#39;s the answer to &amp;quot;why is it slow.&amp;quot; You can stop guessing.&lt;/p&gt;
