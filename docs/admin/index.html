@@ -109,8 +109,10 @@
     s.onload = function () {
       try {
         registerMediaLibrary();
+        registerPreviewStyle();
+        registerPreviewTemplate();
       } catch (err) {
-        console.error('Failed to register media library', err);
+        console.error('Failed to register Decap plugins', err);
       }
       window.CMS.init();
     };
@@ -118,6 +120,56 @@
       showMessage('Could not load the Decap CMS script. Check your network and try again.');
     };
     document.body.appendChild(s);
+  }
+
+  function registerPreviewStyle() {
+    // Loads /admin/preview.css into the preview iframe so the right-hand
+    // pane shows the post in the live site's typography and FAQ styling.
+    window.CMS.registerPreviewStyle('/admin/preview.css');
+  }
+
+  function registerPreviewTemplate() {
+    // Custom preview for the `posts` collection. Renders the title, summary,
+    // the body field (Markdown rendered to HTML by Decap), and any FAQs as
+    // expanded <details> cards so the author can see all answer text at once.
+    //
+    // `h` is preact's createElement, exposed on window by the Decap bundle.
+    const h = window.h;
+
+    function PostPreview(props) {
+      const entry = props.entry;
+      const widgetFor = props.widgetFor;
+      const widgetsFor = props.widgetsFor;
+
+      const title = entry.getIn(['data', 'title']) || 'Untitled';
+      const summary = entry.getIn(['data', 'summary']) || '';
+      const faqs = widgetsFor('faqs');
+
+      const children = [
+        h('h1', null, title),
+        summary ? h('p', { className: 'subtitle' }, summary) : null,
+        h('article', { className: 'post-body' }, widgetFor('body')),
+      ];
+
+      if (faqs && typeof faqs.size === 'number' && faqs.size > 0) {
+        const faqItems = [h('h2', null, 'Frequently asked questions')];
+        faqs.toArray().forEach(function (faq, i) {
+          const q = faq.getIn(['data', 'q']) || '';
+          const a = faq.getIn(['widgets', 'a']);
+          faqItems.push(
+            h('details', { className: 'faq-item', open: true, key: 'faq-' + i },
+              h('summary', null, q || '(question)'),
+              h('div', { className: 'faq-answer' }, a)
+            )
+          );
+        });
+        children.push(h('section', { className: 'faq-section' }, faqItems));
+      }
+
+      return h('div', { className: 'preview-wrap' }, children);
+    }
+
+    window.CMS.registerPreviewTemplate('posts', PostPreview);
   }
 
   function registerMediaLibrary() {

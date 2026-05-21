@@ -1,0 +1,153 @@
+/* Styles for the Decap CMS preview iframe.
+ *
+ * Mirrors the live site's typography, palette, and FAQ layout closely
+ * enough to give the author a realistic sense of how the post will look.
+ * Deliberately skips the site nav and footer to keep the preview focused
+ * on the post body. Not a pixel-perfect mockup.
+ */
+
+:root {
+  color-scheme: light;
+  --ink: #0e1620;
+  --ink-soft: #364152;
+  --muted: #6a7585;
+  --line: #e3e8ef;
+  --line-soft: #eef2f7;
+  --bg: #fafbfc;
+  --panel: #ffffff;
+  --accent: #0c8ca6;
+  --accent-strong: #0a7188;
+  --accent-soft: #e6f4f7;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.preview-wrap {
+  padding: 24px 32px 48px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 32px 0 12px;
+  color: var(--ink);
+}
+h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 24px 0 10px;
+  color: var(--ink);
+}
+
+p {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 24px;
+}
+
+ul, ol {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  color: var(--ink-soft);
+}
+li { margin-bottom: 6px; }
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+code, pre {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+pre {
+  background: var(--line-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow-x: auto;
+}
+code {
+  background: var(--line-soft);
+  padding: 1px 6px;
+  border-radius: 5px;
+}
+pre code {
+  background: none;
+  padding: 0;
+}
+
+blockquote {
+  margin: 18px 0;
+  padding: 12px 18px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink-soft);
+  border-radius: 0 8px 8px 0;
+}
+blockquote p:last-child { margin-bottom: 0; }
+
+hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 32px 0;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  margin: 20px 0;
+}
+
+/* FAQ section — mirrors the live site's collapsible cards. The preview
+ * forces them to render open by default so the author can see all the
+ * answer text without clicking each one. */
+.faq-section { margin-top: 40px; }
+.faq-section h2 { margin-bottom: 16px; }
+.faq-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  margin-bottom: 8px;
+  padding: 14px 18px;
+}
+.faq-item > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.faq-item > summary::-webkit-details-marker { display: none; }
+.faq-answer {
+  color: var(--ink-soft);
+}
+.faq-answer > :last-child { margin-bottom: 0; }
