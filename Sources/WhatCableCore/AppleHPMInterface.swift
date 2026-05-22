@@ -50,50 +50,69 @@ public struct AppleHPMInterface: Identifiable, Hashable {
         entryID: UInt64,
         serviceName: String,
         className: String,
-        properties: [String: Any],
+        read: (String) -> Any?,
         busIndex: Int? = nil
     ) -> AppleHPMInterface? {
         // Only return things that actually look like a physical Type-C or
         // MagSafe port. Real ports have a `PortTypeDescription` and a name
         // like `Port-USB-C@N` / `Port-MagSafe 3@N`.
-        let portType = properties["PortTypeDescription"] as? String
+        let portType = read("PortTypeDescription") as? String
         let isRealPort = (portType == "USB-C" || portType?.hasPrefix("MagSafe") == true)
             && serviceName.hasPrefix("Port-")
         guard isRealPort else { return nil }
 
+        // Build rawProperties from the known keys rather than iterating
+        // all properties. The caller reads keys individually (no bulk
+        // IORegistryEntryCreateCFProperties fetch), so enumeration of
+        // unknown keys is not possible. rawProperties is currently unused
+        // by consumers but retained for future diagnostics.
+        let knownKeys = [
+            "PortType", "PortTypeDescription", "PortDescription", "PortNumber",
+            "ConnectionActive", "ActiveCable", "OpticalCable",
+            "IOAccessoryUSBActive", "IOAccessoryUSBSuperSpeedActive",
+            "IOAccessoryUSBModeType", "IOAccessoryUSBConnectString",
+            "TransportsSupported", "TransportsActive", "TransportsProvisioned",
+            "PlugOrientation", "Plug Event Count", "ConnectionCount",
+            "Overcurrent Count", "Pin Configuration", "DisplayPortPinAssignment",
+            "IOAccessoryPowerCurrentLimits", "FW Version", "Boot Flags",
+            "LDCM_StateDescription", "FeaturesEnabled",
+            "IOAccessoryPowerMode", "IOAccessoryActivePowerMode",
+        ]
         var raw: [String: String] = [:]
-        for (k, v) in properties { raw[k] = stringifyProperty(v) }
+        for key in knownKeys {
+            if let v = read(key) { raw[key] = stringifyProperty(v) }
+        }
 
         return AppleHPMInterface(
             id: entryID,
             serviceName: serviceName,
             className: className,
-            portDescription: properties["PortDescription"] as? String,
-            portTypeDescription: properties["PortTypeDescription"] as? String,
-            portNumber: (properties["PortNumber"] as? NSNumber)?.intValue,
-            connectionActive: (properties["ConnectionActive"] as? NSNumber)?.boolValue,
-            activeCable: (properties["ActiveCable"] as? NSNumber)?.boolValue,
-            opticalCable: (properties["OpticalCable"] as? NSNumber)?.boolValue,
-            usbActive: (properties["IOAccessoryUSBActive"] as? NSNumber)?.boolValue,
-            superSpeedActive: (properties["IOAccessoryUSBSuperSpeedActive"] as? NSNumber)?.boolValue,
-            usbModeType: (properties["IOAccessoryUSBModeType"] as? NSNumber)?.intValue,
-            usbConnectString: properties["IOAccessoryUSBConnectString"] as? String,
-            transportsSupported: stringArrayProperty(properties["TransportsSupported"]),
-            transportsActive: stringArrayProperty(properties["TransportsActive"]),
-            transportsProvisioned: stringArrayProperty(properties["TransportsProvisioned"]),
-            plugOrientation: (properties["PlugOrientation"] as? NSNumber)?.intValue,
-            plugEventCount: (properties["Plug Event Count"] as? NSNumber)?.intValue,
-            connectionCount: (properties["ConnectionCount"] as? NSNumber)?.intValue,
-            overcurrentCount: (properties["Overcurrent Count"] as? NSNumber)?.intValue,
-            pinConfiguration: pinConfigProperty(properties["Pin Configuration"]),
-            displayPortPinAssignment: (properties["DisplayPortPinAssignment"] as? NSNumber)?.intValue,
-            powerCurrentLimits: intArrayProperty(properties["IOAccessoryPowerCurrentLimits"]),
-            firmwareVersion: hexDataProperty(properties["FW Version"]),
-            bootFlagsHex: hexDataProperty(properties["Boot Flags"]),
-            ldcmStateDescription: properties["LDCM_StateDescription"] as? String,
-            featuresEnabled: stringArrayProperty(properties["FeaturesEnabled"]),
-            accessoryPowerMode: (properties["IOAccessoryPowerMode"] as? NSNumber)?.intValue,
-            accessoryActivePowerMode: (properties["IOAccessoryActivePowerMode"] as? NSNumber)?.intValue,
+            portDescription: read("PortDescription") as? String,
+            portTypeDescription: read("PortTypeDescription") as? String,
+            portNumber: (read("PortNumber") as? NSNumber)?.intValue,
+            connectionActive: (read("ConnectionActive") as? NSNumber)?.boolValue,
+            activeCable: (read("ActiveCable") as? NSNumber)?.boolValue,
+            opticalCable: (read("OpticalCable") as? NSNumber)?.boolValue,
+            usbActive: (read("IOAccessoryUSBActive") as? NSNumber)?.boolValue,
+            superSpeedActive: (read("IOAccessoryUSBSuperSpeedActive") as? NSNumber)?.boolValue,
+            usbModeType: (read("IOAccessoryUSBModeType") as? NSNumber)?.intValue,
+            usbConnectString: read("IOAccessoryUSBConnectString") as? String,
+            transportsSupported: stringArrayProperty(read("TransportsSupported")),
+            transportsActive: stringArrayProperty(read("TransportsActive")),
+            transportsProvisioned: stringArrayProperty(read("TransportsProvisioned")),
+            plugOrientation: (read("PlugOrientation") as? NSNumber)?.intValue,
+            plugEventCount: (read("Plug Event Count") as? NSNumber)?.intValue,
+            connectionCount: (read("ConnectionCount") as? NSNumber)?.intValue,
+            overcurrentCount: (read("Overcurrent Count") as? NSNumber)?.intValue,
+            pinConfiguration: pinConfigProperty(read("Pin Configuration")),
+            displayPortPinAssignment: (read("DisplayPortPinAssignment") as? NSNumber)?.intValue,
+            powerCurrentLimits: intArrayProperty(read("IOAccessoryPowerCurrentLimits")),
+            firmwareVersion: hexDataProperty(read("FW Version")),
+            bootFlagsHex: hexDataProperty(read("Boot Flags")),
+            ldcmStateDescription: read("LDCM_StateDescription") as? String,
+            featuresEnabled: stringArrayProperty(read("FeaturesEnabled")),
+            accessoryPowerMode: (read("IOAccessoryPowerMode") as? NSNumber)?.intValue,
+            accessoryActivePowerMode: (read("IOAccessoryActivePowerMode") as? NSNumber)?.intValue,
             busIndex: busIndex,
             rawProperties: raw
         )

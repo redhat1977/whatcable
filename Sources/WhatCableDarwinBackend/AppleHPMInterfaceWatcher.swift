@@ -175,17 +175,21 @@ public final class AppleHPMInterfaceWatcher: ObservableObject {
         IOObjectGetClass(service, &classBuf)
         let className = String(cString: classBuf)
 
-        var props: Unmanaged<CFMutableDictionary>?
-        guard IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-              let dict = props?.takeRetainedValue() as? [String: Any] else {
-            return nil
+        // Read keys individually rather than fetching the full property
+        // dictionary. The bulk fetch (IORegistryEntryCreateCFProperties)
+        // can abort the process from inside IOCFUnserializeBinary when
+        // the kernel returns a malformed serialised properties blob,
+        // typically when the service is being torn down mid-read. The
+        // per-key call has no such failure path. See issue #181.
+        func read(_ key: String) -> Any? {
+            IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
         }
 
         return AppleHPMInterface.from(
             entryID: entryID,
             serviceName: serviceName,
             className: className,
-            properties: dict,
+            read: read,
             busIndex: busIndex(for: service)
         )
     }
