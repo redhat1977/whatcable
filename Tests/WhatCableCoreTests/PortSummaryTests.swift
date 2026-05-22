@@ -541,7 +541,7 @@ struct PortSummaryTests {
         let summary = PortSummary(port: port, identities: [partner])
         let deviceBullet = summary.bullets.first { $0.contains("Connected device") }
         #expect(deviceBullet != nil)
-        #expect(deviceBullet!.contains("PD 3.1"), "Expected PD revision, got: \(deviceBullet!)")
+        #expect(deviceBullet!.contains("PD 3.0"), "Expected PD revision, got: \(deviceBullet!)")
     }
 
     @Test("Partner bullet omits PD revision when zero")

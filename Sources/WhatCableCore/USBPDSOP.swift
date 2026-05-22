@@ -77,14 +77,25 @@ public struct USBPDSOP: Identifiable, Hashable {
         return PDVDO.decodeActiveCableVDO2(vdos[4])
     }
 
-    /// Human-readable PD spec revision (e.g. "PD 3.1"). The raw value from
-    /// IOKit matches the 2-bit SpecRevision field in USB-PD message headers:
-    /// 0 = unset/unknown, 1 = PD 2.0, 2 = PD 3.0, 3 = PD 3.1
+    /// Human-readable PD spec revision (e.g. "PD 3.0"). The raw value is the
+    /// IOKit `Specification Revision` property on the SOP / SOP' / SOP'' node,
+    /// passed through untransformed. Per `research/iokit-data-sources.md` §7
+    /// and the M3 Ultra HPM dump, the mapping is:
+    ///
+    /// - `2` = PD 2.0 (seen on real e-marked cables and partners back to M1)
+    /// - `3` = PD 3.0 (the majority of modern hardware)
+    /// - `0` = unset
+    /// - `1` = placeholder; in every observed case (M3 Max, M4, M5 customer
+    ///   probes) the `Metadata` block is empty, so this is not a real PD
+    ///   contract and we return `nil` rather than invent a spec version.
+    ///
+    /// Note that PD 3.1 hardware still reports `3` here. The 2-bit SpecRev
+    /// header field cannot encode 3.1; that revision is distinguished by EPR
+    /// PDOs, not by this property.
     public var pdRevisionLabel: String? {
         switch specRevision {
-        case 1: return "PD 2.0"
-        case 2: return "PD 3.0"
-        case 3: return "PD 3.1"
+        case 2: return "PD 2.0"
+        case 3: return "PD 3.0"
         default: return nil
         }
     }
