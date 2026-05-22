@@ -82,12 +82,10 @@ public func wcPortType(from dict: [String: Any], service: io_service_t? = nil) -
         IOObjectRelease(current)
         current = parent
 
-        var props: Unmanaged<CFMutableDictionary>?
-        guard IORegistryEntryCreateCFProperties(current, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-              let parentDict = props?.takeRetainedValue() as? [String: Any] else {
-            continue
-        }
-        if let type = parentDict["PortTypeDescription"] as? String {
+        // Read the single key individually rather than bulk-fetching all
+        // properties. The bulk fetch can abort inside IOCFUnserializeBinary
+        // when the kernel returns a malformed blob mid-teardown. See #181.
+        if let type = IORegistryEntryCreateCFProperty(current, "PortTypeDescription" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? String {
             return type
         }
     }

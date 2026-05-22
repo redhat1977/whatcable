@@ -80,17 +80,21 @@ public final class PowerSourceWatcher: ObservableObject {
         var entryID: UInt64 = 0
         IORegistryEntryGetRegistryEntryID(service, &entryID)
 
-        var props: Unmanaged<CFMutableDictionary>?
-        guard IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-              let dict = props?.takeRetainedValue() as? [String: Any] else {
-            return nil
+        // Read keys individually rather than fetching the full property
+        // dictionary. The bulk fetch (IORegistryEntryCreateCFProperties)
+        // can abort the process from inside IOCFUnserializeBinary when
+        // the kernel returns a malformed serialised properties blob,
+        // typically when the service is being torn down mid-read. The
+        // per-key call has no such failure path. See issue #181.
+        func read(_ key: String) -> Any? {
+            IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
         }
 
-        let name = (dict["PowerSourceName"] as? String) ?? "Unknown"
-        let parent = Self.parentPortIdentity(from: dict)
+        let name = (read("PowerSourceName") as? String) ?? "Unknown"
+        let parent = Self.parentPortIdentity(read: read)
 
-        let options: [PowerOption] = parseOptions(dict["PowerSourceOptions"])
-        let winning: PowerOption? = parseOption(dict["WinningPowerSourceOption"])
+        let options: [PowerOption] = parseOptions(read("PowerSourceOptions"))
+        let winning: PowerOption? = parseOption(read("WinningPowerSourceOption"))
 
         return PowerSource(
             id: entryID,
@@ -102,13 +106,13 @@ public final class PowerSourceWatcher: ObservableObject {
         )
     }
 
-    nonisolated static func parentPortIdentity(from dict: [String: Any]) -> (type: Int, number: Int) {
-        let type = (dict["ParentBuiltInPortType"] as? NSNumber)?.intValue
-            ?? (dict["ParentPortType"] as? NSNumber)?.intValue
+    nonisolated static func parentPortIdentity(read: (String) -> Any?) -> (type: Int, number: Int) {
+        let type = (read("ParentBuiltInPortType") as? NSNumber)?.intValue
+            ?? (read("ParentPortType") as? NSNumber)?.intValue
             ?? 0
-        let number = (dict["ParentBuiltInPortNumber"] as? NSNumber)?.intValue
-            ?? (dict["ParentPortNumber"] as? NSNumber)?.intValue
-            ?? Int(((dict["Priority"] as? NSNumber)?.uint64Value ?? 0) & 0xFF)
+        let number = (read("ParentBuiltInPortNumber") as? NSNumber)?.intValue
+            ?? (read("ParentPortNumber") as? NSNumber)?.intValue
+            ?? Int(((read("Priority") as? NSNumber)?.uint64Value ?? 0) & 0xFF)
         return (type, number)
     }
 

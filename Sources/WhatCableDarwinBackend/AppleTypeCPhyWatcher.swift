@@ -100,17 +100,21 @@ public final class AppleTypeCPhyWatcher: ObservableObject {
     }
 
     private func makePhy(from service: io_service_t) -> AppleTypeCPhy? {
-        var props: Unmanaged<CFMutableDictionary>?
-        guard IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0) == KERN_SUCCESS,
-              let dict = props?.takeRetainedValue() as? [String: Any] else {
-            return nil
+        // Read keys individually rather than fetching the full property
+        // dictionary. The bulk fetch (IORegistryEntryCreateCFProperties)
+        // can abort the process from inside IOCFUnserializeBinary when
+        // the kernel returns a malformed serialised properties blob,
+        // typically when the service is being torn down mid-read. The
+        // per-key call has no such failure path. See issue #181.
+        func read(_ key: String) -> Any? {
+            IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
         }
 
-        let phyID = (dict["AppleTypeCPhyID"] as? NSNumber)?.intValue ?? -1
+        let phyID = (read("AppleTypeCPhyID") as? NSNumber)?.intValue ?? -1
         guard phyID >= 0 else { return nil }
 
         var lanes: [PhyLane] = []
-        if let laneDict = dict["AppleTypeCPhyLane"] as? [String: Any] {
+        if let laneDict = read("AppleTypeCPhyLane") as? [String: Any] {
             for i in 0..<4 {
                 let key = "Lane \(i)"
                 guard let laneProps = laneDict[key] as? [String: Any] else { continue }
@@ -125,7 +129,7 @@ public final class AppleTypeCPhyWatcher: ObservableObject {
         }
 
         let usb2: PhyUSB2?
-        if let usb2Dict = dict["AppleTypeCPhyUSB2"] as? [String: Any] {
+        if let usb2Dict = read("AppleTypeCPhyUSB2") as? [String: Any] {
             usb2 = PhyUSB2(
                 transport: (usb2Dict["Transport"] as? String) ?? "",
                 client: (usb2Dict["Client"] as? String) ?? ""
@@ -135,7 +139,7 @@ public final class AppleTypeCPhyWatcher: ObservableObject {
         }
 
         let dpPclk: PhyDisplayPortPclk?
-        if let pclkDict = dict["AppleTypeCPhyDisplayPortPclk"] as? [String: Any] {
+        if let pclkDict = read("AppleTypeCPhyDisplayPortPclk") as? [String: Any] {
             dpPclk = PhyDisplayPortPclk(
                 linkRate: (pclkDict["Link Rate"] as? String) ?? ""
             )
@@ -143,7 +147,7 @@ public final class AppleTypeCPhyWatcher: ObservableObject {
             dpPclk = nil
         }
 
-        let dpTunnel = dict["AppleTypeCPhyDisplayPortTunnel"] as? String
+        let dpTunnel = read("AppleTypeCPhyDisplayPortTunnel") as? String
 
         return AppleTypeCPhy(
             id: phyID,

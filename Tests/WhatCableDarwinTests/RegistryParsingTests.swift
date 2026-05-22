@@ -54,7 +54,7 @@ struct RegistryParsingTests {
             "ParentPortType": NSNumber(value: 2),
             "ParentPortNumber": NSNumber(value: 1)
         ]
-        let builtInParent = PowerSourceWatcher.parentPortIdentity(from: builtIn)
+        let builtInParent = PowerSourceWatcher.parentPortIdentity(read: { builtIn[$0] })
         #expect(builtInParent.type == 0x11)
         #expect(builtInParent.number == 2)
 
@@ -62,7 +62,7 @@ struct RegistryParsingTests {
             "ParentPortType": NSNumber(value: 0x11),
             "Priority": NSNumber(value: 0x0201)
         ]
-        let priorityParent = PowerSourceWatcher.parentPortIdentity(from: priority)
+        let priorityParent = PowerSourceWatcher.parentPortIdentity(read: { priority[$0] })
         #expect(priorityParent.type == 0x11)
         #expect(priorityParent.number == 1)
     }
