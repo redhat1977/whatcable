@@ -78,6 +78,7 @@ struct SettingsForm: View {
                     Text(verbatim: "Español").tag("es")
                     Text(verbatim: "Français").tag("fr")
                     Text(verbatim: "Italiano").tag("it")
+                    Text(verbatim: "Latviešu").tag("lv")
                     Text(verbatim: "Norsk Bokmål").tag("nb")
                     Text(verbatim: "Polski").tag("pl")
                     Text(verbatim: "हिन्दी").tag("hi")
