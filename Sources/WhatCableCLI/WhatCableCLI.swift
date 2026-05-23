@@ -38,11 +38,19 @@ struct WhatCableCLI {
             exit(2)
         }
 
-        for cmd in PluginRegistry.shared.cliCommands {
-            if cmd.matches(args) {
-                await cmd.run(args)
-                return
-            }
+        // Plugin commands are program-modes, not flags that combine. If the
+        // user typed two at once (e.g. `--activate KEY --silence-pro-hints`)
+        // their intent is ambiguous, so refuse rather than silently picking
+        // the first one in registration order.
+        let matchingCommands = PluginRegistry.shared.cliCommands.filter { $0.matches(args) }
+        if matchingCommands.count > 1 {
+            let names = matchingCommands.flatMap { $0.flagNames }.joined(separator: ", ")
+            FileHandle.standardError.write(Data("whatcable: multiple commands matched (\(names)). Run one at a time.\n".utf8))
+            exit(2)
+        }
+        if let cmd = matchingCommands.first {
+            await cmd.run(args)
+            return
         }
 
         let showRaw = args.contains("--raw")
