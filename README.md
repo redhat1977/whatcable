@@ -88,6 +88,17 @@ brew install --cask whatcable
 
 This installs the menu bar app and symlinks the `whatcable` CLI into your PATH.
 
+### Homebrew, CLI only (no menu bar app)
+
+If you don't want the menu bar app, install just the command-line tool:
+
+```bash
+brew tap darrylmorley/whatcable
+brew install whatcable-cli
+```
+
+Same signed and notarised binary, packaged on its own. Useful in terminal-only or scripting environments. Pick one of the two Homebrew installs (both ship the same `whatcable` binary).
+
 ## Command-line interface
 
 A `whatcable` binary ships alongside the menu bar app, driven by the same diagnostic engine:
@@ -118,6 +129,17 @@ whatcable --test-kit     # run diagnostic probes and submit anonymised data
 whatcable --version
 whatcable --help
 ```
+
+Pro licence management from the command line:
+
+```bash
+whatcable --activate XXXX-XXXX-XXXX-XXXX  # validate and store a Pro licence
+whatcable --licence                        # show current licence status
+whatcable --deactivate                     # remove the stored licence
+whatcable --pro                            # show Pro features, open purchase page
+```
+
+The CLI prints a one-line Pro hint at the end of plain text output for unlicensed users. Run `whatcable --silence-pro-hints` to hide it (or `--show-pro-hints` to bring it back). Suppressed automatically when output is piped, redirected, or used with `--json`.
 
 If you installed the `.app` manually rather than via Homebrew, the CLI lives at `WhatCable.app/Contents/Helpers/whatcable`. Symlink it into your PATH if you want it on the shell:
 

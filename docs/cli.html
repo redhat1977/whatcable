@@ -432,10 +432,16 @@
 <h2>Install</h2>
 
 <h3>Homebrew (recommended)</h3>
-<p>Homebrew installs the menu bar app and puts the <code>whatcable</code> CLI on your PATH automatically.</p>
+<p>The cask installs the menu bar app and puts the <code>whatcable</code> CLI on your PATH automatically.</p>
 <pre><code><span class="prompt">$</span> brew tap darrylmorley/whatcable
 <span class="prompt">$</span> brew install --cask whatcable</code></pre>
 <p>After this, <code>whatcable</code> just works from any new terminal window.</p>
+
+<h3>Homebrew, CLI only (no menu bar app)</h3>
+<p>If you don't want the menu bar app, install just the command-line tool:</p>
+<pre><code><span class="prompt">$</span> brew tap darrylmorley/whatcable
+<span class="prompt">$</span> brew install whatcable-cli</code></pre>
+<p>Same signed and notarised binary as the one inside the .app, packaged on its own. Useful for scripting environments or terminal-only setups. Pick one of these two installs (both can coexist, but they ship the same <code>whatcable</code> binary).</p>
 
 <h3>Downloaded the .zip from GitHub?</h3>
 <p>The CLI is bundled inside the app, at:</p>
@@ -514,7 +520,7 @@
 <h2>All flags</h2>
 <pre><code><span class="prompt">$</span> whatcable --help
 
-whatcable 0.10.1 -- What can this USB-C cable actually do?
+whatcable 0.13.0 -- What can this USB-C cable actually do?
 
 Usage: whatcable [options]
 
@@ -524,13 +530,22 @@ Options:
   --raw          Include raw IOKit properties for each port
   --report       Print a cable report (markdown + GitHub URL) and exit
   --version      Print version and exit
-  -h, --help     Show this help and exit</code></pre>
+  -h, --help     Show this help and exit
+  --monitor      Monitor live power telemetry (WhatCable Pro)
+  --monitor-json Output live power telemetry as newline-delimited JSON
+  --test-kit     Run diagnostic probes and submit data to help improve WhatCable
+  --pro          Show WhatCable Pro features and open the purchase page
+  --silence-pro-hints  Stop showing the Pro hint at the end of CLI output
+  --show-pro-hints     Re-enable the Pro hint shown at the end of CLI output
+  --activate KEY Activate a WhatCable Pro licence (KEY = XXXX-XXXX-XXXX-XXXX)
+  --deactivate   Remove the stored Pro licence from this machine
+  --licence      Show the current Pro licence status</code></pre>
 
 <h2>Requirements</h2>
 <ul>
   <li>macOS 14 (Sonoma) or later.</li>
   <li>Apple Silicon (M1 or later). Intel Macs don't expose USB-PD state through IOKit.</li>
-  <li>The WhatCable.app must be installed (the CLI binary lives inside the app bundle).</li>
+  <li>Either the WhatCable.app (cask install) or the standalone CLI install (<code>whatcable-cli</code> formula).</li>
 </ul>
 
 <div class="note">
