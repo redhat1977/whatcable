@@ -34,6 +34,7 @@ hand-maintained markdown table; format may change once the consumer exists.
 | Apple USB-C to 3.5 mm headphone jack adapter (e-marker on built-in plug) | `0x05AC` | `0x110A` | `0x11000000` | Apple | none | USB 2.0 (480 Mbps) | USB default at up to 20V (~60W) | passive | [#175](https://github.com/darrylmorley/whatcable/issues/175) |
 | LG 27UP85NP-W monitor bundled USB-C cable (unbranded) | `0x163E` | `0x0CE9` | `0x00084841` | Huizhou Bohui Connection Technology Co., Ltd | `0x99` | USB 3.2 Gen 1 (5 Gbps) | 5 A / 20 V (100 W) | passive | [#165](https://github.com/darrylmorley/whatcable/issues/165) |
 | Anker 333 USB-C 3.3 ft nylon | `0x201C` | `0x0000` | `0x00082040` | Hongkong Freeport Electronics Co., Limited | none | USB 2.0 (480 Mbps) | 5 A / 20 V (100 W) | passive | [#60](https://github.com/darrylmorley/whatcable/issues/60) |
+| LG 27UP850N-W monitor bundled USB-C cable (Hongkong Freeport silicon, USB-IF certified) | `0x201C` | `0x0001` | `0x00084841` | Hongkong Freeport Electronics Co., Limited | `0xBBB` | USB 3.2 Gen 1 (5 Gbps) | 5 A / 20 V (100 W) | passive | [#192](https://github.com/darrylmorley/whatcable/issues/192) |
 | Eizo EV2740X monitor bundled cable (KVM connection) | `0x208E` | `0xC026` | `0x00084041` | Luxshare-ICT | none | USB 3.2 Gen 1 (5 Gbps) | 5 A / 20 V (100 W) | passive | [#137](https://github.com/darrylmorley/whatcable/issues/137) |
 | Monoprice Essentials USB-C 10 Gbps 0.5 m | `0x2095` | `0x004F` |  | CE LINK LIMITED | none | USB 3.2 Gen 2 (10 Gbps) | 5 A / 20 V (100 W) | passive | [#48](https://github.com/darrylmorley/whatcable/issues/48) |
 | delock TB3-branded cable | `0x20C2` | `0x0005` |  | Sumitomo Electric Ind., Ltd., Optical Comm. R&D Lab | none | USB 3.2 Gen 2 (10 Gbps) | 5 A / 20 V (100 W) | passive | [#44](https://github.com/darrylmorley/whatcable/issues/44) |
@@ -70,6 +71,7 @@ hand-maintained markdown table; format may change once the consumer exists.
 | SUNGUY 30 cm USB-C cable, Amazon Italy (rated 60 W) | `0x0000` | `0x0000` |  | (zeroed) | none | (none advertised) | (not advertised) | passive | [#158](https://github.com/darrylmorley/whatcable/issues/158) |
 | Anker Zolo 240 W 3 ft (A8060) (VID/PID zeroed; Cable VDO encodes 250 W EPR) | `0x0000` | `0x0000` | `0x000A2640` | (zeroed) | none | USB 2.0 (480 Mbps) | 5 A / 50 V (250 W) | passive | [#166](https://github.com/darrylmorley/whatcable/issues/166) |
 | Anker USB-C cable, model not provided (e-marker present, no PD Discover Identity response) | `0x0000` | `0x0000` |  | (zeroed) | none | (none advertised) | (not advertised) | passive | [#170](https://github.com/darrylmorley/whatcable/issues/170) |
+| 影视飓风 (FilmShark) TB5-class USB4 80 Gbps cable, Taobao (no USB-IF cert) | `0x0000` | `0x0001` | `0x000A4644` | (zeroed) | none | USB4 Gen 4 (80 Gbps, Thunderbolt 5 class) | 5 A / 50 V (250 W) | passive | [#193](https://github.com/darrylmorley/whatcable/issues/193) |
 
 Sorted by VID. The zeroed-fingerprint entry is parked at the bottom because it
 is identity-less.

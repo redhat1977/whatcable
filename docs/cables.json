@@ -84,6 +84,20 @@
     "xid" : "none"
   },
   {
+    "brand" : "影视飓风 (FilmShark) TB5-class USB4 80 Gbps cable, Taobao (no USB-IF cert)",
+    "cableVDO" : "0x000A4644",
+    "issueNum" : "#193",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/193",
+    "pid" : "0x0001",
+    "power" : "5 A \/ 50 V (250 W)",
+    "registered" : true,
+    "speed" : "USB4 Gen 4 (80 Gbps, Thunderbolt 5 class)",
+    "type" : "passive",
+    "vendor" : "(zeroed)",
+    "vid" : "0x0000",
+    "xid" : "none"
+  },
+  {
     "brand" : "UGOURD TB5\/USB4 cable, AliExpress (no USB-IF cert)",
     "cableVDO" : "0x000A2644",
     "issueNum" : "#71",
@@ -208,6 +222,20 @@
     "vendor" : "Hongkong Freeport Electronics Co., Limited",
     "vid" : "0x201C",
     "xid" : "none"
+  },
+  {
+    "brand" : "LG 27UP850N-W monitor bundled USB-C cable (Hongkong Freeport silicon, USB-IF certified)",
+    "cableVDO" : "0x00084841",
+    "issueNum" : "#192",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/192",
+    "pid" : "0x0001",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB 3.2 Gen 1 (5 Gbps)",
+    "type" : "passive",
+    "vendor" : "Hongkong Freeport Electronics Co., Limited",
+    "vid" : "0x201C",
+    "xid" : "0xBBB"
   },
   {
     "brand" : "Eizo EV2740X monitor bundled cable (KVM connection)",
