@@ -182,6 +182,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
             if let button = item.button {
                 button.image = NSImage(systemSymbolName: "cable.connector", accessibilityDescription: AppInfo.name)
+                if button.image == nil {
+                    button.title = "WC"
+                }
                 button.target = self
                 button.action = #selector(handleClick(_:))
                 button.sendAction(on: [.leftMouseUp, .rightMouseUp])
