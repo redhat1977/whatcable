@@ -110,7 +110,7 @@
 "Unknown generation (raw speed code 0x%@)" = "未知世代（原始速度代碼 0x%@）";
 "Unknown generation (raw speed code 0x2, inferred TB5)" = "未知世代（原始速度代碼 0x2，推測為 TB5）";
 "Unspecified" = "未指定";
-"Up to %lld Gb/s %@" = "最高 %lld Gb/s %@";
+"Up to %lld Gb/s %@" = "最高 %1$lld Gb/s %2$@";
 "VCONN-powered device" = "VCONN 供電裝置";
 "Vendor ID isn't in USB-IF's published list" = "Vendor ID 不在 USB-IF 已公布清單中";
 "What can this USB-C cable actually do?" = "這條 USB-C 線材到底能做什麼？";
@@ -389,7 +389,7 @@
 "What your monitor can do, and what the link is carrying." = "查看顯示器的規格，以及目前連線實際承載的內容。";
 "No Displays" = "沒有顯示器";
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "透過 USB-C 或 Thunderbolt 連接顯示器，即可查看目前連線提供的能力。";
-"%@ port %lld" = "%1$@ 連接埠 %2$lld";
+"%@ port %lld" = "%@ 連接埠 %lld";
 "Display" = "顯示器";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "原生 %lldHz";
