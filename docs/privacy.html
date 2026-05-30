@@ -378,7 +378,7 @@
     <main>
   <div class="wrap">
     <h1>Privacy Policy</h1>
-    <p class="subtitle">Last updated: 2026-05-07</p>
+    <p class="subtitle">Last updated: 2026-05-30</p>
     <p>
   WhatCable is a small macOS menu bar app that tells you what each USB-C
   cable plugged into your Mac can actually do. This page explains what
@@ -413,6 +413,34 @@
   Nothing is sent automatically.
 </p>
 
+<h2>Contributing diagnostic data (opt-in)</h2>
+<p>
+  WhatCable has an optional "Contribute Diagnostic Data" feature, in
+  Settings and the right-click menu. It is off by default and never runs
+  on its own. When you choose to run it, a consent screen explains what
+  will be sent before anything leaves your Mac.
+</p>
+<p>
+  If you proceed, WhatCable runs a set of read-only IOKit probes and sends
+  the results to a WhatCable server to help improve cable, port, and
+  display detection. The submission contains:
+</p>
+<ul>
+  <li>Raw IOKit registry properties for your USB-C and Thunderbolt ports,
+    power delivery state, and Thunderbolt topology.</li>
+  <li>The model and capabilities of any connected display, read from its
+    EDID. The monitor's serial number is removed before the data is sent.</li>
+  <li>Your macOS version and Mac chip type.</li>
+  <li>A one-way SHA-256 hash of your Mac's hardware UUID, used only to
+    group submissions from the same machine. The original UUID is never
+    sent and cannot be recovered from the hash.</li>
+</ul>
+<p>
+  No names, accounts, raw serial numbers, or personal data are included.
+  It is the same kind of data visible in System Information. Decline at
+  the consent screen and nothing is sent.
+</p>
+
 <h2>What WhatCable stores</h2>
 <p>
   WhatCable stores your in-app preferences (display mode, hidden ports,
@@ -421,7 +449,10 @@
 </p>
 
 <h2>What WhatCable does not do</h2>
-<p>WhatCable does not collect, store, or transmit:</p>
+<p>
+  Outside the opt-in diagnostic feature described above, WhatCable does
+  not collect, store, or transmit:
+</p>
 <ul>
   <li>Personal information (name, email, address, phone number).</li>
   <li>Account or device identifiers.</li>
