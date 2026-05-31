@@ -55,13 +55,19 @@ public final class PowerTelemetryWatcher: ObservableObject {
         )
 
         let portKeys = cachedPortKeys ?? []
+        // The contracted per-port data is attributed from the self-keyed power
+        // sources (IOPortFeaturePowerSource), which state the port outright.
+        // PortControllerInfo (an unlabelled array inside AppleSmartBattery) only
+        // enriches the decoded volts/amps, matched by watts; it never assigns a
+        // port. The old code keyed it by array offset, which landed a charger's
+        // watts on the wrong port's card.
+        let sources = PowerSourceWatcher.readAllPowerSources()
         // PowerOutDetails has live metering but only covers USB-C ports.
-        // PortControllerInfo covers all ports (including MagSafe) but only
-        // has contracted/negotiated data, not live current draw.
-        // Merge both: prefer PowerOutDetails where available, fill in the
-        // rest from PortControllerInfo so MagSafe and other ports appear.
+        // Merge: prefer PowerOutDetails where available, fill the rest from the
+        // source-attributed contract so MagSafe and contracted ports appear,
+        // each on the correct port.
         var portSamples = Self.portPowerSamples(from: dict["PowerOutDetails"], portKeys: portKeys)
-        let controllerSamples = Self.portPowerSamplesFromControllerInfo(dict["PortControllerInfo"], portKeys: portKeys)
+        let controllerSamples = Self.portPowerSamplesFromControllerInfo(dict["PortControllerInfo"], sources: sources)
         let coveredKeys = Set(portSamples.map(\.portKey))
         for sample in controllerSamples where !coveredKeys.contains(sample.portKey) {
             portSamples.append(sample)
@@ -206,40 +212,58 @@ public final class PowerTelemetryWatcher: ObservableObject {
         }
     }
 
-    nonisolated static func portPowerSamplesFromControllerInfo(_ value: Any?, portKeys: [String]) -> [PortPowerSample] {
-        wcArray(value).enumerated().compactMap { offset, item in
-            let dict = wcDictionary(item)
-            guard !dict.isEmpty else { return nil }
-            let maxPower = wcInt(dict["PortControllerMaxPower"])
-            let rdo = UInt32(bitPattern: Int32(truncatingIfNeeded: wcInt(dict["PortControllerActiveContractRdo"])))
-            let operatingCurrent = Int((rdo >> 10) & 0x3FF) * 10
-            let pdoPosition = Int((rdo >> 28) & 0x7)
-            guard maxPower > 0 || pdoPosition > 0 else { return nil }
+    /// Build one contracted power sample per port that has a winning power
+    /// source. The port, watts, and a baseline voltage/current come from the
+    /// self-keyed source (`IOPortFeaturePowerSource`), which states the port
+    /// outright, so a contract can never land on the wrong port.
+    ///
+    /// `PortControllerInfo` (the unlabelled array inside `AppleSmartBattery`)
+    /// is used only to *enrich* the decoded volts/amps. Its items carry no port
+    /// id, so each is matched to its port by watts (`PowerControllerPortJoin`)
+    /// and its PDO decode is preferred where present, because it recovers the
+    /// exact negotiated tier even where the source's winning PDO is coarse
+    /// (e.g. MagSafe). No match, or an ambiguous one, falls back to the
+    /// source's own winning figures: never a guessed key.
+    nonisolated static func portPowerSamplesFromControllerInfo(_ controllerInfo: Any?, sources: [PowerSource]) -> [PortPowerSample] {
+        let items = wcArray(controllerInfo)
+        let maxPowers = items.map { wcInt(wcDictionary($0)["PortControllerMaxPower"]) }
+        let joinByIndex = PowerControllerPortJoin.portKeysByContent(
+            controllerMaxPowerMW: maxPowers,
+            sources: sources
+        )
 
-            // Recover the negotiated voltage/current by decoding the source
-            // PDO list. This is NOT fabrication: the numbers come straight
-            // out of the PDO bytes the port negotiated. The RDO
-            // object-position field is unreliable (it points at the wrong
-            // PDO for MagSafe), so instead match the fixed-supply PDO whose
-            // power is closest to PortControllerMaxPower, the authoritative
-            // contracted figure. Verified against M5 Air dumps: USB-C
-            // 20V/2.25A = 45W, MagSafe 20V/2.99A = 59.8W. When no PDO list
-            // is present (or none matches) voltage stays 0 so we never
-            // invent one.
-            let negotiated = decodeNegotiatedContract(
-                pdoList: dict["PortControllerPortPDO"],
-                maxPowerMW: maxPower,
-                operatingCurrentMA: operatingCurrent
-            )
+        return Dictionary(grouping: sources, by: \.portKey).compactMap { portKey, portSources -> PortPowerSample? in
+            guard let source = PowerSource.preferredChargingSource(in: portSources) ?? portSources.first,
+                  let winning = source.winning, winning.maxPowerMW > 0 else { return nil }
 
-            let key = offset < portKeys.count ? portKeys[offset] : "2/\(offset + 1)"
+            var voltage = winning.voltageMV
+            var current = winning.maxCurrentMA
+
+            // Enrichment: the PortControllerInfo item watts-matched to this port
+            // (if any) carries the precisely decoded contract. Prefer it; the
+            // source's winning figures are the fallback.
+            if let index = joinByIndex.first(where: { $0.value == portKey })?.key {
+                let dict = wcDictionary(items[index])
+                let rdo = UInt32(bitPattern: Int32(truncatingIfNeeded: wcInt(dict["PortControllerActiveContractRdo"])))
+                let operatingCurrent = Int((rdo >> 10) & 0x3FF) * 10
+                if let negotiated = decodeNegotiatedContract(
+                    pdoList: dict["PortControllerPortPDO"],
+                    maxPowerMW: wcInt(dict["PortControllerMaxPower"]),
+                    operatingCurrentMA: operatingCurrent
+                ) {
+                    voltage = negotiated.voltageMV
+                    current = negotiated.currentMA
+                }
+            }
+
+            let portNumber = Int(portKey.split(separator: "/").last.map(String.init) ?? "") ?? 0
             return PortPowerSample(
-                portIndex: offset + 1,
-                portKey: key,
-                current: negotiated?.currentMA ?? operatingCurrent,
-                watts: maxPower,
-                configuredVoltage: negotiated?.voltageMV ?? 0,
-                configuredCurrent: negotiated?.currentMA ?? operatingCurrent,
+                portIndex: portNumber,
+                portKey: portKey,
+                current: current,
+                watts: winning.maxPowerMW,
+                configuredVoltage: voltage,
+                configuredCurrent: current,
                 adapterVoltage: 0,
                 vconnCurrent: 0,
                 vconnPower: 0,

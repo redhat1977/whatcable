@@ -57,6 +57,15 @@ public final class PowerSourceWatcher: ObservableObject {
         // value that downstream subscribers see as "everything disconnected,"
         // which made NotificationManager fire a charger-connect/disconnect pair
         // on every poll tick. See issue #227.
+        let rebuilt = Self.readAllPowerSources()
+        if rebuilt != sources { sources = rebuilt }
+    }
+
+    /// Enumerate every `IOPortFeaturePowerSource` once and parse it into the
+    /// self-keyed `PowerSource` model. Shared with `PowerTelemetryWatcher`,
+    /// which needs the keyed contract to attribute `PortControllerInfo` detail
+    /// to the right port (instead of array-offset guessing).
+    public nonisolated static func readAllPowerSources() -> [PowerSource] {
         var rebuilt: [PowerSource] = []
         var iter: io_iterator_t = 0
         if IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOPortFeaturePowerSource"), &iter) == KERN_SUCCESS {
@@ -68,12 +77,12 @@ public final class PowerSourceWatcher: ObservableObject {
             }
             IOObjectRelease(iter)
         }
-        if rebuilt != sources { sources = rebuilt }
+        return rebuilt
     }
 
     private func handleAdded(_ iter: io_iterator_t) {
         while case let service = IOIteratorNext(iter), service != 0 {
-            if let s = makeSource(from: service), !sources.contains(where: { $0.id == s.id }) {
+            if let s = Self.makeSource(from: service), !sources.contains(where: { $0.id == s.id }) {
                 sources.append(s)
             }
             IOObjectRelease(service)
@@ -89,7 +98,7 @@ public final class PowerSourceWatcher: ObservableObject {
         }
     }
 
-    private func makeSource(from service: io_service_t) -> PowerSource? {
+    nonisolated static func makeSource(from service: io_service_t) -> PowerSource? {
         var entryID: UInt64 = 0
         IORegistryEntryGetRegistryEntryID(service, &entryID)
 
@@ -129,7 +138,7 @@ public final class PowerSourceWatcher: ObservableObject {
         return (type, number)
     }
 
-    private func parseOptions(_ value: Any?) -> [PowerOption] {
+    nonisolated static func parseOptions(_ value: Any?) -> [PowerOption] {
         // IOKit publishes PowerSourceOptions as an __NSCFSet (CF set), not
         // an NSArray. ioreg renders it as "[{...}]" which looks like an
         // array, but the actual CF type is a set. Handle both.
@@ -145,7 +154,7 @@ public final class PowerSourceWatcher: ObservableObject {
             .sorted { $0.maxPowerMW > $1.maxPowerMW }
     }
 
-    private func parseOption(_ value: Any?) -> PowerOption? {
+    nonisolated static func parseOption(_ value: Any?) -> PowerOption? {
         let dict: [String: Any]?
         if let d = value as? [String: Any] {
             dict = d
