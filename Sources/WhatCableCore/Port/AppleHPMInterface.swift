@@ -256,7 +256,16 @@ public struct AppleHPMInterface: Identifiable, Hashable {
     /// truth for both the inline "Billboard device present" label and the Pro
     /// screen's gated Alt-Mode diagnosis.
     public func hasBillboardDevice(among devices: [USBDevice]) -> Bool {
-        matchingDevices(from: devices).contains { $0.isBillboardDevice }
+        billboardDevice(among: devices) != nil
+    }
+
+    /// The first USB Billboard device enumerated on this physical port, if any.
+    /// The single match definition: `hasBillboardDevice` delegates here so the
+    /// port-to-device correlation can't drift between the two APIs. Returns the
+    /// device so callers can name it (e.g. "Billboard device: Anker USB-C Hub
+    /// Device"). The Pro screen's gated diagnosis still uses the boolean.
+    public func billboardDevice(among devices: [USBDevice]) -> USBDevice? {
+        matchingDevices(from: devices).first { $0.isBillboardDevice }
     }
 
     private var carriesUSB: Bool {

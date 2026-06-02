@@ -524,10 +524,10 @@ struct PortCard: View {
             // the inline card just names it. Any inference about a failed Alt
             // Mode lives only in the Pro Display Diagnostics screen, gated on a
             // degraded link.
-            if port.hasBillboardDevice(among: devices) {
+            if let billboard = port.billboardDevice(among: devices) {
                 HStack(alignment: .top, spacing: 6) {
                     Text(verbatim: "•").foregroundStyle(.secondary)
-                    Text(String(localized: "Billboard device present", bundle: _appLocalizedBundle))
+                    Text(billboard.billboardPresenceLabel(bundle: _appLocalizedBundle))
                         .scaledFont(.callout)
                     Spacer()
                 }

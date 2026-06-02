@@ -128,9 +128,11 @@ public enum TextFormatter {
         }
 
         // Name only, no diagnosis (a Billboard device is often benign). The
-        // Alt-Mode inference is reserved for the Pro Display screen.
-        if port.hasBillboardDevice(among: usbDevices) {
-            out += "  " + ANSI.wrap(ANSI.gray, "\u{2022}") + " " + String(localized: "Billboard device present", bundle: _coreLocalizedBundle) + "\n"
+        // Alt-Mode inference is reserved for the Pro Display screen. Show the
+        // device's own name when it adds information, else the generic phrase.
+        if let billboard = port.billboardDevice(among: usbDevices) {
+            let label = billboard.billboardPresenceLabel(bundle: _coreLocalizedBundle)
+            out += "  " + ANSI.wrap(ANSI.gray, "\u{2022}") + " " + label + "\n"
         }
 
         if !usbDevices.isEmpty {

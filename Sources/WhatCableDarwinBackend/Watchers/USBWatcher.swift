@@ -131,6 +131,11 @@ public final class USBWatcher: ObservableObject {
 
         let (busIdx, portName) = controllerInfo(for: service, fallback: locationID)
 
+        // Read the Billboard Capability Descriptor (advertised Alt Modes and
+        // their per-mode state) once, here at device-appearance. One-shot
+        // control transfer, no device-open in the common case. See DAR-141.
+        let billboard = BillboardDescriptorReader.read(from: service)
+
         return USBDevice(
             id: entryID,
             locationID: locationID,
@@ -147,6 +152,7 @@ public final class USBWatcher: ObservableObject {
             controllerPortName: portName,
             deviceClass: deviceClass,
             ioClassName: ioClassName,
+            billboard: billboard,
             rawProperties: raw
         )
     }

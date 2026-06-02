@@ -30,6 +30,10 @@ public struct USBDevice: Identifiable, Hashable {
     /// "AppleUSBHostBillboardDevice" for a Billboard device). Read from
     /// `IOObjectGetClass`. `nil` when unavailable.
     public let ioClassName: String?
+    /// Parsed Billboard Capability Descriptor (BOS `0x0d`), when the device
+    /// publishes one: the Alt Modes it advertises and their per-mode state.
+    /// `nil` when the device has no Billboard capability or the BOS read failed.
+    public let billboard: BillboardCapability?
     public let rawProperties: [String: String]
 
     public init(
@@ -48,6 +52,7 @@ public struct USBDevice: Identifiable, Hashable {
         controllerPortName: String? = nil,
         deviceClass: UInt8? = nil,
         ioClassName: String? = nil,
+        billboard: BillboardCapability? = nil,
         rawProperties: [String: String]
     ) {
         self.id = id
@@ -65,6 +70,7 @@ public struct USBDevice: Identifiable, Hashable {
         self.controllerPortName = controllerPortName
         self.deviceClass = deviceClass
         self.ioClassName = ioClassName
+        self.billboard = billboard
         self.rawProperties = rawProperties
     }
 
@@ -76,18 +82,18 @@ public struct USBDevice: Identifiable, Hashable {
     ///   - the IOKit class is Apple's Billboard device class, or
     ///   - the product name macOS assigns ("Generic Billboard Device").
     ///
-    /// On signal quality, deliberately not yet matching the order they're
-    /// checked: `bDeviceClass` and the IOKit class are the *durable* signals
-    /// (defined by the USB spec and by macOS's class hierarchy). The
-    /// product-name string is the *fragile* one: "Generic Billboard Device" is
-    /// a macOS-supplied label that Apple can rename on any OS bump, at which
-    /// point it silently stops matching. It currently carries the feature only
-    /// because it is the one signal we've actually seen fire on real hardware;
-    /// the live `bDeviceClass` value is still unconfirmed (the Test Kit probe
-    /// will gather it). The moment community data confirms `0x11`, that should
-    /// become the primary signal and the string match drop to a last resort.
-    /// Do not let "it shipped on the string" harden into "the string is the
-    /// real detector".
+    /// On signal quality: `bDeviceClass == 0x11` is the *primary* signal. It is
+    /// confirmed across the customer-probe corpus (46 machines, M1 through M5,
+    /// macOS 15 and 26), and it catches real Billboard devices whose product
+    /// names contain no hint of "Billboard" at all (Apple's "USB Type-C Digital
+    /// AV Adapter", "Anker USB-C Hub Device", "Belkin USB HDMI", and similar).
+    /// The IOKit class match is the second durable signal. The product-name
+    /// string is kept only as a harmless last-resort fallback: it is fragile
+    /// (a macOS-supplied label Apple can rename on any OS bump) and, as the
+    /// corpus shows, it would miss many devices `0x11` catches, so it must not
+    /// be treated as the real detector. It is not removed because the inverse
+    /// (a device named "billboard" that does not report `0x11`) has not been
+    /// ruled out.
     ///
     /// Naming a Billboard device is always safe; any *diagnosis* from its
     /// presence is gated separately in `DisplayDiagnostic`.
@@ -96,6 +102,31 @@ public struct USBDevice: Identifiable, Hashable {
         if let cls = ioClassName, cls.localizedCaseInsensitiveContains("BillboardDevice") { return true }
         if let name = productName, name.localizedCaseInsensitiveContains("Billboard") { return true }
         return false
+    }
+
+    /// The Billboard device's product name when it adds information beyond the
+    /// generic "Billboard device" label, else `nil`. Many Billboard endpoints
+    /// report a name that is itself just a "billboard" variant ("Generic
+    /// Billboard Device", "USB 2.0 BILLBOARD"), which tells the user nothing new,
+    /// so callers fall back to the plain "Billboard device present" phrasing.
+    /// Names like "Anker USB-C Hub Device" or "Belkin USB HDMI" do add
+    /// information and are returned as-is.
+    public var billboardInformativeName: String? {
+        guard let name = productName?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !name.isEmpty,
+              !name.localizedCaseInsensitiveContains("billboard") else { return nil }
+        return name
+    }
+
+    /// Inline label for a Billboard device on a port: names it when the name
+    /// adds information, else the generic presence phrase. Shared by the CLI
+    /// (`TextFormatter`) and the menu-bar popover so their wording can't drift.
+    /// Pass the caller's localized bundle (Core's vs the app's).
+    public func billboardPresenceLabel(bundle: Bundle) -> String {
+        if let name = billboardInformativeName {
+            return String(localized: "Billboard device: \(name)", bundle: bundle)
+        }
+        return String(localized: "Billboard device present", bundle: bundle)
     }
 
     public var speedLabel: String {
