@@ -25,7 +25,8 @@ struct DisplayDiagnosticTests {
         tunneled: Bool = false,
         dfpType: String? = nil,
         branchDeviceId: String? = nil,
-        edidData: Data? = nil
+        edidData: Data? = nil,
+        currentMode: DisplayCurrentMode? = nil
     ) -> IOPortTransportStateDisplayPort {
         IOPortTransportStateDisplayPort(
             link: DisplayPortLink(
@@ -44,7 +45,8 @@ struct DisplayDiagnosticTests {
                 )
             },
             dfpType: dfpType,
-            branchDeviceId: branchDeviceId
+            branchDeviceId: branchDeviceId,
+            currentMode: currentMode
         )
     }
 
@@ -345,6 +347,117 @@ struct DisplayDiagnosticTests {
         #expect(diag.bottleneck == .compressionPlausible)
         #expect(diag.isWarning == false)
         #expect(diag.cableAssessment == .unlikelyTheCable)
+    }
+
+    // MARK: - CoreGraphics current-mode upgrade (issue #246 Option B / #249)
+
+    @Test("Live mode at the panel's top mode upgrades compression to confirmed fine")
+    func liveModeAtTopUpgradesToFine() throws {
+        // FO32 at 4K240 over 4-lane HBR3 would be compressionPlausible, but a
+        // matched live mode confirms it IS at 4K240, so we upgrade to .fine.
+        let live = DisplayCurrentMode(width: 3840, height: 2160, refreshHz: 240)
+        let dp = makeDP(lanes: 4, maxLanes: 4, rateDesc: "8.1 Gbps (HBR3)", currentMode: live)
+        let diag = try #require(DisplayDiagnostic(dp: dp, edid: fo32))
+        #expect(diag.bottleneck == .fine)
+        #expect(diag.isWarning == false)
+        #expect(diag.detail.contains("3840 x 2160 @ 240Hz"))
+    }
+
+    @Test("Live mode below the top mode keeps today's compressionPlausible verdict")
+    func liveModeBelowTopDoesNotUpgrade() throws {
+        // The display is actually running 4K60, short of its 240Hz top mode, so
+        // there is no certainty to upgrade with: stays compressionPlausible.
+        let live = DisplayCurrentMode(width: 3840, height: 2160, refreshHz: 60)
+        let dp = makeDP(lanes: 4, maxLanes: 4, rateDesc: "8.1 Gbps (HBR3)", currentMode: live)
+        let diag = try #require(DisplayDiagnostic(dp: dp, edid: fo32))
+        #expect(diag.bottleneck == .compressionPlausible)
+    }
+
+    @Test("No live mode is the regression guard: behaviour is exactly today's verdict")
+    func noLiveModeKeepsShippedVerdict() throws {
+        // The shipped Option A path must never change when currentMode is nil.
+        let dp = makeDP(lanes: 4, maxLanes: 4, rateDesc: "8.1 Gbps (HBR3)")
+        let diag = try #require(DisplayDiagnostic(dp: dp, edid: fo32))
+        #expect(diag.bottleneck == .compressionPlausible)
+        #expect(diag.facts.currentMode == nil)
+    }
+
+    @Test("A 5K live mode surfaces in the facts even when the EDID under-reads it (issue #249)")
+    func fiveKLiveModeInFacts() throws {
+        // A Studio Display whose EDID can only describe a 4K-or-smaller mode.
+        // The link is a TB tunnel, so the verdict is already .fine; the bug is
+        // purely the label, which the live mode fixes.
+        let studioEdid = EDIDInfo(
+            monitorName: "Studio Display",
+            versionMajor: 1, versionMinor: 4,
+            preferredWidth: 4096, preferredHeight: 2304, preferredRefreshHz: 60,
+            preferredPixelClockHz: 600_000_000,
+            maxRefreshHz: 60, maxPixelClockHz: 600_000_000
+        )
+        let live = DisplayCurrentMode(width: 5120, height: 2880, refreshHz: 60)
+        let dp = makeDP(lanes: 4, maxLanes: 4, rateDesc: "8.1 Gbps (HBR3)", tunneled: true, currentMode: live)
+        let diag = try #require(DisplayDiagnostic(dp: dp, edid: studioEdid))
+        #expect(diag.facts.currentMode?.width == 5120)
+        #expect(diag.facts.currentMode?.height == 2880)
+        #expect(diag.facts.currentMode?.label == "5120 x 2880 @ 60Hz")
+    }
+
+    // MARK: - Real corpus EDID (AORUS FO32U2P, customer probe m2pro_macos26.6)
+
+    /// The actual 384-byte EDID the Test Kit captured from @buliwyf42's AORUS
+    /// FO32U2P (probe 33, serial bytes redacted at source). Baked in as a
+    /// fixture so the parse + verdict are tested against real hardware data
+    /// without needing the corpus on disk.
+    private static let fo32RealEDID = decodeHex(
+        "00ffffffffffff001c5415320000000009220104b5452778fb0ad5af4e3eb5240e5054" +
+        "bfef80714f81c08100814081809500a9c0b3004dd000a0f0703e8030203500bb8b2100" +
+        "001a000000fd0c30f0ffffea010a202020202020000000fc00414f52555320464f3332" +
+        "553250000000ff0000000000000000000000000000020d02033c704f6175765e5f603f" +
+        "4003040f10131f292309570783010000741a0000030330f000a067024f02f000000000" +
+        "0000e305c301e6060d01674f026fc200a0a0a0555030203500bb8b2100001a565e00a0a" +
+        "0a0295030203500bb8b2100001a0000000000000000000000000000000000000000000" +
+        "0000000000000000000005e7012790300030164e9ec00047f079f002f801f003704860" +
+        "002000400ca9c0104ff099f002f801f009f05b20002000400bb5a0204ff0e9f002f801" +
+        "f006f08b100020004005be70204ff0e9f002f801f006f08da0002000400f77e0304ff0" +
+        "edf002f801f006f08bc0002000400000000000000000000000000000000000000f090"
+    )
+
+    private static func decodeHex(_ s: String) -> Data {
+        var data = Data(capacity: s.count / 2)
+        var i = s.startIndex
+        while i < s.endIndex {
+            let j = s.index(i, offsetBy: 2)
+            data.append(UInt8(s[i..<j], radix: 16)!)
+            i = j
+        }
+        return data
+    }
+
+    @Test("Real FO32U2P EDID from the corpus parses to its 4K240 top mode")
+    func corpusEDIDParses() throws {
+        let edid = try #require(EDIDInfo(Self.fo32RealEDID))
+        #expect(edid.monitorName == "AORUS FO32U2P")
+        #expect(edid.preferredWidth == 3840)
+        #expect(edid.preferredHeight == 2160)
+        #expect(edid.maxRefreshHz == 240)
+        // Product id (EDID bytes 10-11) is 0x3215 = 12821, the corpus value.
+        #expect(Self.fo32RealEDID[10] == 0x15 && Self.fo32RealEDID[11] == 0x32)
+    }
+
+    @Test("Real corpus EDID at the DP ceiling without a live mode stays compressionPlausible")
+    func corpusEDIDCompressionPlausible() throws {
+        let dp = makeDP(lanes: 4, maxLanes: 4, rateDesc: "8.1 Gbps (HBR3)", edidData: Self.fo32RealEDID)
+        let diag = try #require(DisplayDiagnostic(dp: dp))
+        #expect(diag.bottleneck == .compressionPlausible)
+    }
+
+    @Test("Real corpus EDID plus a matched 4K240 live mode confirms full quality")
+    func corpusEDIDUpgradesWithLiveMode() throws {
+        let live = DisplayCurrentMode(width: 3840, height: 2160, refreshHz: 240)
+        let dp = makeDP(lanes: 4, maxLanes: 4, rateDesc: "8.1 Gbps (HBR3)", edidData: Self.fo32RealEDID, currentMode: live)
+        let diag = try #require(DisplayDiagnostic(dp: dp))
+        #expect(diag.bottleneck == .fine)
+        #expect(diag.detail.contains("3840 x 2160 @ 240Hz"))
     }
 
     @Test("No Billboard note when the link is at the ceiling (can't claim below best mode)")

@@ -74,6 +74,11 @@ public struct DisplayDiagnostic {
         /// it is what the device reports about itself, paired with the
         /// demonstrated lane usage to explain a cap.
         public let branchDevice: String?
+        /// The live on-screen mode from CoreGraphics, when the backend could
+        /// match this display to its port. Drives the true resolution label
+        /// (issue #249: 5K displays whose EDID can't describe their native
+        /// mode). nil when there's no live data (Windows, tests, no match).
+        public let currentMode: DisplayCurrentMode?
     }
 
     /// Whether the cable can be implicated in a shortfall. Deliberately has
@@ -198,7 +203,8 @@ extension DisplayDiagnostic {
                 neededGbps: nil, deliveredGbps: delivered,
                 lanes: lanes, maxLanes: maxLanes,
                 rateDescription: rate, sinkType: sinkType,
-                branchDevice: branchDevice
+                branchDevice: branchDevice,
+                currentMode: dp.currentMode
             )
             self.bottleneck = .unknownMode
             self.summary = String(localized: "Display connected", bundle: _coreLocalizedBundle)
@@ -227,7 +233,8 @@ extension DisplayDiagnostic {
             deliveredGbps: delivered,
             lanes: lanes, maxLanes: maxLanes,
             rateDescription: rate, sinkType: sinkType,
-            branchDevice: branchDevice
+            branchDevice: branchDevice,
+            currentMode: dp.currentMode
         )
 
         // Without a delivered figure (unparseable rate string) we can't
@@ -290,6 +297,19 @@ extension DisplayDiagnostic {
         // above, and DSC reasoning doesn't carry through an HDMI/DVI/VGA
         // converter.
         if lanes > 0, lanes == maxLanes, let perLane, perLane >= Self.highRatePerLaneGbps {
+            // Certainty upgrade (issue #246): if CoreGraphics confirms the
+            // display is actually at its top mode, replace the hedged "may be
+            // using compression" with a definitive "running at full quality".
+            // Strict and fail-closed: only when we have a matched live mode and
+            // it meets the panel's top mode by active-pixel throughput.
+            // Anything short, or no live mode at all, keeps today's verdict.
+            if let current = dp.currentMode, Self.meetsTopMode(current, edid: edid) {
+                self.facts = baseFacts
+                self.bottleneck = .fine
+                self.summary = String(localized: "Display running at full quality", bundle: _coreLocalizedBundle)
+                self.detail = String(localized: "Your \(name) is running its top mode (\(current.label)), and the link is carrying it. Many high-resolution displays use compression (DSC) to fit a mode like this through the link, so the link rate alone can't show it; your display is at full quality.", bundle: _coreLocalizedBundle)
+                return
+            }
             self.facts = baseFacts
             self.bottleneck = .compressionPlausible
             self.summary = String(localized: "Display may be using compression to reach its top mode", bundle: _coreLocalizedBundle)
@@ -363,5 +383,21 @@ extension DisplayDiagnostic {
     /// Human-readable bandwidth, one decimal place, e.g. "14.4 Gbps".
     static func gbps(_ value: Double) -> String {
         String(format: "%.1f Gbps", value)
+    }
+
+    /// Whether the live mode meets the monitor's top mode. Compared in one
+    /// domain on purpose: active-pixel throughput on both sides (current
+    /// width x height x refresh vs the EDID's preferred resolution x max
+    /// refresh). Never the EDID pixel clock, which includes blanking and would
+    /// run ~10-20% higher than CoreGraphics' active-pixel figure at the very
+    /// same mode, making this comparison fail when it shouldn't. The tolerance
+    /// absorbs blanking/refresh rounding. Also handles 5K for free: a Studio
+    /// Display's EDID under-reports its preferred width, so the true live mode
+    /// clears the (mistakenly lower) top easily.
+    static func meetsTopMode(_ current: DisplayCurrentMode, edid: EDIDInfo) -> Bool {
+        let topRefresh = Double(edid.maxRefreshHz ?? edid.preferredRefreshHz)
+        let topThroughput = Double(edid.preferredWidth) * Double(edid.preferredHeight) * topRefresh
+        guard topThroughput > 0 else { return false }
+        return current.pixelThroughput >= topThroughput * (1 - Self.tolerance)
     }
 }

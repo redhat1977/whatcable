@@ -629,6 +629,9 @@ private struct DisplayDTO: Codable {
     /// Cable attribution: "unlikelyTheCable" or "inconclusive". Never blames
     /// the cable (only ever exonerates it on demonstrated evidence).
     let cableAssessment: String
+    /// The live on-screen mode from CoreGraphics, when matched. The true
+    /// resolution even for 5K/6K displays whose EDID can't describe it.
+    let currentMode: CurrentModeDTO?
 
     init(diagnostic: DisplayDiagnostic) {
         self.summary = diagnostic.summary
@@ -654,6 +657,19 @@ private struct DisplayDTO: Codable {
         self.rate = facts.rateDescription
         self.sinkType = facts.sinkType
         self.branchDevice = facts.branchDevice
+        self.currentMode = facts.currentMode.map(CurrentModeDTO.init)
+    }
+}
+
+private struct CurrentModeDTO: Codable {
+    let width: Int
+    let height: Int
+    let refreshHz: Double
+
+    init(_ mode: DisplayCurrentMode) {
+        self.width = mode.width
+        self.height = mode.height
+        self.refreshHz = mode.refreshHz
     }
 }
 

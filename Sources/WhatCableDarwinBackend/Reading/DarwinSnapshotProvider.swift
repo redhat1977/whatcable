@@ -68,7 +68,7 @@ public final class DarwinSnapshotProvider: CableSnapshotProvider, @unchecked Sen
                 trmTransports: trmWatcher.transports,
                 cioCapabilities: trmWatcher.cioCapabilities,
                 typeCPhys: phyWatcher.phys,
-                displayPorts: displayWatcher.statuses.map(\.status),
+                displayPorts: DisplayModeReader.enrich(displayWatcher.statuses.map(\.status)),
                 batteryFullyCharged: battery.battery?.fullyCharged
             )
             DarwinSnapshotProvider.logChargingSignals(snap)

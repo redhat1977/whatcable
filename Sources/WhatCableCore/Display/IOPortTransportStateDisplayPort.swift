@@ -92,6 +92,11 @@ public struct IOPortTransportStateDisplayPort: Codable, Sendable, Equatable {
     public let edidChanged: Bool
     public let nominalSignalingFrequenciesHz: [Int]
     public let index: Int
+    /// The live on-screen mode from CoreGraphics, attached by the Darwin
+    /// backend when it can match this node to exactly one display. nil on the
+    /// Windows backend, in tests, and whenever the match is missing or
+    /// ambiguous, so every consumer treats its absence as "no extra data".
+    public let currentMode: DisplayCurrentMode?
 
     public init(
         link: DisplayPortLink,
@@ -125,7 +130,8 @@ public struct IOPortTransportStateDisplayPort: Codable, Sendable, Equatable {
         parentBuiltInPortNumber: Int = 0,
         edidChanged: Bool = false,
         nominalSignalingFrequenciesHz: [Int] = [],
-        index: Int = 0
+        index: Int = 0,
+        currentMode: DisplayCurrentMode? = nil
     ) {
         self.link = link
         self.monitor = monitor
@@ -159,6 +165,7 @@ public struct IOPortTransportStateDisplayPort: Codable, Sendable, Equatable {
         self.edidChanged = edidChanged
         self.nominalSignalingFrequenciesHz = nominalSignalingFrequenciesHz
         self.index = index
+        self.currentMode = currentMode
     }
 }
 
