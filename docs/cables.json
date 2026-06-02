@@ -406,6 +406,20 @@
     "xid" : "0x303C"
   },
   {
+    "brand" : "CalDigit Thunderbolt 5 cable, Amazon",
+    "cableVDO" : "0x110A2644",
+    "issueNum" : "#254",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/254",
+    "pid" : "0x4003",
+    "power" : "5 A \/ 50 V (240 W)",
+    "registered" : false,
+    "speed" : "USB4 Gen 4（80 Gbps，Thunderbolt 5 级）",
+    "type" : "passive",
+    "vendor" : "Unregistered",
+    "vid" : "0x01B6",
+    "xid" : "0x303C"
+  },
+  {
     "brand" : "HP USB-C dock (built-in cable, ~2020 era)",
     "cableVDO" : "0x00402FB2",
     "issueNum" : "#112",
@@ -432,6 +446,20 @@
     "vendor" : "ACON, Advanced-Connectek, Inc.",
     "vid" : "0x0522",
     "xid" : "0x939"
+  },
+  {
+    "brand" : "noda Thunderbolt 4 cable, ACON silicon, Intel-certified",
+    "cableVDO" : "0x110A2643",
+    "issueNum" : "#265",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/265",
+    "pid" : "0x0A18",
+    "power" : "5 A \/ 50 V (240 W)",
+    "registered" : true,
+    "speed" : "USB4 Gen 3（40 Gbps，Thunderbolt 4 等級）",
+    "type" : "passive",
+    "vendor" : "ACON, Advanced-Connectek, Inc.",
+    "vid" : "0x0522",
+    "xid" : "0x944"
   },
   {
     "brand" : "Apple USB-C to 3.5 mm headphone jack adapter (e-marker on built-in plug)",
@@ -522,6 +550,20 @@
     "cableVDO" : "0x00082040",
     "issueNum" : "#60",
     "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/60",
+    "pid" : "0x0000",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB 2.0 (480 Mbps)",
+    "type" : "passive",
+    "vendor" : "Hongkong Freeport Electronics Co., Limited",
+    "vid" : "0x201C",
+    "xid" : "none"
+  },
+  {
+    "brand" : "Anker Nylon USB-C 100W 3m, Hongkong Freeport silicon",
+    "cableVDO" : "0x00086040",
+    "issueNum" : "#261",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/261",
     "pid" : "0x0000",
     "power" : "5 A \/ 20 V (100 W)",
     "registered" : true,
@@ -964,5 +1006,33 @@
     "vendor" : "Prototype product Vendor ID",
     "vid" : "0x6666",
     "xid" : "0x52C"
+  },
+  {
+    "brand" : "Kramer C-U32\/MFF-6, 6 ft AV cable",
+    "cableVDO" : "0x00084842",
+    "issueNum" : "#260",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/260",
+    "pid" : "0x1004",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : false,
+    "speed" : "USB 3.2 Gen 2 (10 Gbps)",
+    "type" : "passive",
+    "vendor" : "Unregistered",
+    "vid" : "0x7857",
+    "xid" : "none"
+  },
+  {
+    "brand" : "Kramer C-U32\/MFF-10, 10 ft AV cable",
+    "cableVDO" : "0x00086842",
+    "issueNum" : "#259",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/259",
+    "pid" : "0x1005",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : false,
+    "speed" : "USB 3.2 Gen 2 (10 Gbps)",
+    "type" : "passive",
+    "vendor" : "Unregistered",
+    "vid" : "0x7857",
+    "xid" : "none"
   }
 ]
