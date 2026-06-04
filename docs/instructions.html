@@ -597,6 +597,13 @@ brew install --cask whatcable</pre>
 </div>
 
 <div class="docs-faq">
+  <h3>My Mac mini or Studio front USB-C ports don't show up</h3>
+  <p>
+    On Apple Silicon desktops, the front USB-C ports are standard USB behind an internal hub, not full USB-C ports with their own controller like the ports on the back. The Mac reports no cable, power, or charging data for them, so there's nothing for WhatCable to show. The back Thunderbolt ports work fully.
+  </p>
+</div>
+
+<div class="docs-faq">
   <h3>It says "Basic cable" with no details</h3>
   <p>
     This is normal for most everyday USB-C cables. Only higher-rated cables (Thunderbolt, USB4, or cables rated for 100W+) are required to have the chip that reports detailed info. Your cable still works fine, there's just nothing extra to report.
