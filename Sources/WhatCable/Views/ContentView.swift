@@ -113,9 +113,23 @@ struct ContentView: View {
         rootContent
         // Width: wide enough for the widest Pro screen's own minWidth
         // (Negotiation 560, Power Monitor 520, Cable Diagnostics 500) so
-        // content never overflows and clips. Height stays content-fit so a
-        // near-empty popover isn't half the screen (issue #159).
-        .frame(minWidth: 560, idealWidth: 560, maxWidth: 760, minHeight: 200, maxHeight: 760)
+        // content never overflows and clips.
+        //
+        // The max cap is only applied in menu-bar mode, where the surface is
+        // an NSPopover. A popover sizes itself to its content and can't be
+        // user-resized, so the cap keeps a near-empty popover from being half
+        // the screen (issue #159) and stops the wide Pro screens clipping.
+        //
+        // In Dock-app (window) mode the surface is a real resizable NSWindow,
+        // so we drop the cap and let the content fill whatever size the user
+        // drags the window to (issue #281). The min still applies.
+        .frame(
+            minWidth: 560,
+            idealWidth: 560,
+            maxWidth: settings.useMenuBarMode ? 760 : .infinity,
+            minHeight: 200,
+            maxHeight: settings.useMenuBarMode ? 760 : .infinity
+        )
         .environment(\.fontScale, settings.fontSize)
         .onAppear {
             isDesktopMac = AppleSmartBatteryReader.read().isDesktopMac
