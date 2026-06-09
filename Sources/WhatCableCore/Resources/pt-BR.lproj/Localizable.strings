@@ -431,7 +431,7 @@
 "Cable note:" = "Nota do cabo:";
 "Vendor is recognised but not in WhatCable's bundled USB-IF list" = "Fabricante reconhecido, mas não na lista USB-IF incluída no WhatCable";
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "O ID de fabricante %1$@ (%2$@) corresponde a um fabricante reconhecido na lista USB da comunidade, mas não na lista USB-IF incluída no WhatCable.";
-"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt)" = "O cabo tem um chip e-marker, não lido nesta conexão (requer acima de 3 A ou Thunderbolt)";
+"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "O cabo tem um chip e-marker, não lido nesta conexão (requer acima de 3 A ou Thunderbolt, ou tente reconectar o cabo)";
 
 "Battery full" = "Bateria cheia";
 "Thunderbolt" = "Thunderbolt";

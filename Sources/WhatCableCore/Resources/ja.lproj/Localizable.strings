@@ -433,7 +433,7 @@
 "Cable note:" = "ケーブルに関する注記:";
 "Vendor is recognised but not in WhatCable's bundled USB-IF list" = "ベンダーは判明していますが、WhatCableに同梱されたUSB-IF一覧には含まれていません";
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "ベンダーID %1$@（%2$@）はコミュニティのUSBベンダー一覧では判明していますが、WhatCableに同梱されているUSB-IFの一覧には含まれていません。";
-"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt)" = "ケーブルにe-markerチップがありますが、この接続では読み取られていません（3Aを超える電流またはThunderboltが必要）";
+"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "ケーブルにe-markerチップがありますが、この接続では読み取られていません（3Aを超える電流またはThunderboltが必要、またはケーブルを接続し直してください）";
 
 "Battery full" = "バッテリー満充電";
 "Thunderbolt" = "Thunderbolt";

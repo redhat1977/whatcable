@@ -431,7 +431,7 @@
 "Cable note:" = "केबल नोट:";
 "Vendor is recognised but not in WhatCable's bundled USB-IF list" = "वेंडर पहचाना गया, लेकिन WhatCable में शामिल USB-IF सूची में नहीं";
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "वेंडर आईडी %1$@ (%2$@) कम्युनिटी USB वेंडर सूची में एक पहचाना हुआ निर्माता है, लेकिन WhatCable में शामिल USB-IF सूची में नहीं है।";
-"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt)" = "केबल में e-marker चिप है, इस कनेक्शन पर नहीं पढ़ी गई (3A से अधिक या Thunderbolt आवश्यक)";
+"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "केबल में e-marker चिप है, इस कनेक्शन पर नहीं पढ़ी गई (3A से अधिक या Thunderbolt आवश्यक, या केबल को फिर से कनेक्ट करके देखें)";
 
 "Battery full" = "बैटरी पूर्ण";
 "Thunderbolt" = "Thunderbolt";

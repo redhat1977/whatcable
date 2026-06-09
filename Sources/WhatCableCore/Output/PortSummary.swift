@@ -293,7 +293,7 @@ extension PortSummary {
             if emarkerRead {
                 bullets.append(String(localized: "Cable has an e-marker chip (advertises its capabilities)", bundle: _coreLocalizedBundle))
             } else {
-                bullets.append(String(localized: "Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt)", bundle: _coreLocalizedBundle))
+                bullets.append(String(localized: "Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)", bundle: _coreLocalizedBundle))
             }
         } else if hasPayload && !isMagSafe {
             if !pdCapable {

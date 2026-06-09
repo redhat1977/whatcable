@@ -431,7 +431,7 @@
 "Cable note:" = "케이블 참고:";
 "Vendor is recognised but not in WhatCable's bundled USB-IF list" = "벤더는 확인되지만 WhatCable에 포함된 USB-IF 목록에는 없음";
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "벤더 ID %1$@(%2$@)는 커뮤니티 USB 벤더 목록에서는 확인되는 제조사이지만, WhatCable에 포함된 USB-IF 목록에는 없습니다.";
-"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt)" = "케이블에 E-marker 칩이 있지만 이 연결에서는 읽지 못했습니다 (3A 초과 또는 Thunderbolt 필요)";
+"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "케이블에 E-marker 칩이 있지만 이 연결에서는 읽지 못했습니다 (3A 초과 또는 Thunderbolt 필요, 또는 케이블을 다시 연결해 보세요)";
 
 "Battery full" = "충전 완료됨";
 "Thunderbolt" = "Thunderbolt";

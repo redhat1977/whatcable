@@ -432,7 +432,7 @@
 "Cable note:" = "Մալուխի նշում.";
 "Vendor is recognised but not in WhatCable's bundled USB-IF list" = "Արտադրողը ճանաչված է, բայց WhatCable-ի հետ ներառված USB-IF ցանկում չկա";
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "Արտադրողի ID %1$@ (%2$@)-ը ճանաչված արտադրող է համայնքային USB ցանկում, սակայն բացակայում է WhatCable-ի հետ մատակարարվող USB-IF ցանկից:";
-"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt)" = "Մալուխն ունի e-marker չիպ, այս միացման ժամանակ չի կարդացվել (պահանջվում է ավելի քան 3 Ա կամ Thunderbolt)";
+"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "Մալուխն ունի e-marker չիպ, այս միացման ժամանակ չի կարդացվել (պահանջվում է ավելի քան 3 Ա կամ Thunderbolt, կամ փորձեք նորից միացնել մալուխը)";
 
 "Battery full" = "Մարտկոցը լիցքավորված է";
 "Thunderbolt" = "Thunderbolt";

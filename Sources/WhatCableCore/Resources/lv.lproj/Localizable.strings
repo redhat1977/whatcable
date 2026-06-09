@@ -431,7 +431,7 @@
 "Cable note:" = "Piezīme par kabeli:";
 "Vendor is recognised but not in WhatCable's bundled USB-IF list" = "Ražotājs ir atpazīts, bet nav WhatCable iekļautajā USB-IF sarakstā";
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "Ražotāja ID %1$@ (%2$@) pieder atpazītam ražotājam kopienas USB sarakstā, bet ne USB-IF sarakstā, kas iekļauts WhatCable.";
-"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt)" = "Kabelim ir e-marker mikroshēma, šajā savienojumā nav nolasīta (nepieciešams vairāk par 3 A vai Thunderbolt)";
+"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "Kabelim ir e-marker mikroshēma, šajā savienojumā nav nolasīta (nepieciešams vairāk par 3 A vai Thunderbolt, vai mēģiniet atkārtoti pievienot kabeli)";
 
 "Battery full" = "Akumulators pilns";
 "Thunderbolt" = "Thunderbolt";

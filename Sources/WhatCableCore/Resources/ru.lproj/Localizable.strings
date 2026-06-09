@@ -431,7 +431,7 @@
 "Cable note:" = "Примечание о кабеле:";
 "Vendor is recognised but not in WhatCable's bundled USB-IF list" = "Производитель известен, но отсутствует в списке USB-IF, входящем в WhatCable";
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "Идентификатор производителя %1$@ (%2$@) принадлежит известному производителю из общественного списка USB, но отсутствует в списке USB-IF, входящем в WhatCable.";
-"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt)" = "У кабеля есть чип e-marker, не считан при этом подключении (нужно более 3 А или Thunderbolt)";
+"Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "У кабеля есть чип e-marker, не считан при этом подключении (нужно более 3 А или Thunderbolt, или попробуйте переподключить кабель)";
 
 "Battery full" = "Батарея заряжена";
 "Thunderbolt" = "Thunderbolt";
