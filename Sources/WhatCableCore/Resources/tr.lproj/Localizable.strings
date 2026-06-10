@@ -436,6 +436,10 @@
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "%1$@ (%2$@) satıcı kimliği, topluluk USB satıcı listesinde tanınan bir üreticiye ait; ancak WhatCable'ın paketlediği USB-IF listesinde bulunmuyor.";
 "Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "Kabloda e-marker çipi var, bu bağlantıda okunmadı (3A üzerinde veya Thunderbolt gerektirir, ya da kabloyu yeniden bağlamayı deneyin)";
 
+/* DFP product type labels (DAR-24) */
+"Host" = "Ana Bilgisayar";
+"Power Brick" = "Güç Adaptörü";
+
 "Battery full" = "Pil dolu";
 "Thunderbolt" = "Thunderbolt";
 

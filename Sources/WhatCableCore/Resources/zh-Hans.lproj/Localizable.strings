@@ -437,6 +437,10 @@
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "厂商 ID %1$@（%2$@）在社区 USB 厂商列表中是可识别的厂商，但不在 WhatCable 内置的 USB-IF 列表中。";
 "Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "线缆有 e-marker 芯片，但本次连接未读取（需要超过 3A 或 Thunderbolt，或尝试重新连接线缆）";
 
+/* DFP product type labels (DAR-24) */
+"Host" = "主机";
+"Power Brick" = "电源适配器";
+
 "Battery full" = "电池已充满";
 "Thunderbolt" = "Thunderbolt";
 

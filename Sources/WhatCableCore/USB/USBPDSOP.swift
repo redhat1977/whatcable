@@ -53,8 +53,15 @@ public struct USBPDSOP: Identifiable, Hashable {
     /// cable (passive or active). A cable normally answers at SOP' / SOP'',
     /// but a cable plugged in on its own can answer at the SOP/partner
     /// address instead, declaring its cable identity there.
+    ///
+    /// Also returns true when the DFP field's raw bits match UFP cable-type
+    /// values, which some non-compliant real-world firmware emits at SOP with
+    /// UFP = undefined. The spec-correct check is `idHeader?.isCable`; use
+    /// this property when a best-effort heuristic for identifying cables is
+    /// appropriate (e.g. trust-signal softening in CableTrustReport).
     public var identifiesAsCable: Bool {
-        idHeader?.isCable ?? false
+        guard let header = idHeader else { return false }
+        return header.isCable || header.dfpRawValueLooksLikeCable
     }
 
     /// The Cert Stat VDO is at index 1. Carries the USB-IF-issued XID,

@@ -39,6 +39,74 @@ struct PDVDOTests {
         #expect(header.usbCommDevice)
     }
 
+    // MARK: DFP product type (DAR-24 regression guard)
+    // These tests verify that the DFP field (bits 25..23) is decoded with
+    // DFP semantics, not UFP semantics. Per Table 6.34 of the USB PD R3.2
+    // spec, the same raw value means different things in the two fields:
+    // UFP 010 = Peripheral, DFP 010 = Host. UFP 011 = Passive Cable,
+    // DFP 011 = Power Brick.
+
+    @Test("DFP Host (010) labels as Host, not USB Peripheral")
+    func dfpHostLabelsAsHost() {
+        // DFP product type field = 010 (Host). Bits 25..23.
+        // 2 << 23 = 0x0100_0000
+        let vdo: UInt32 = 0x0100_0000
+        let header = PDVDO.decodeIDHeader(vdo)
+        // UFP field should be unset (000 = Not UFP)
+        #expect(header.ufpProductType == .undefined)
+        // DFP field should decode to .host (010), not .pdusbPeripheral
+        #expect(header.dfpProductType == .host)
+        #expect(header.dfpProductType.label == "Host")
+    }
+
+    @Test("DFP Power Brick (011) is not a cable")
+    func dfpPowerBrickIsNotCable() {
+        // DFP product type field = 011 (Power Brick). Bits 25..23.
+        // 3 << 23 = 0x0180_0000
+        let vdo: UInt32 = 0x0180_0000
+        let header = PDVDO.decodeIDHeader(vdo)
+        // UFP field is unset, so ufpProductType = .undefined
+        #expect(header.ufpProductType == .undefined)
+        // DFP field = .powerBrick, not .passiveCable
+        #expect(header.dfpProductType == .powerBrick)
+        // A power brick is NOT a cable. isCable must be false.
+        #expect(!header.isCable)
+        #expect(header.dfpProductType.label == "Power Brick")
+    }
+
+    @Test("UFP passive cable (011) is still a cable (SOP' regression guard)")
+    func ufpPassiveCableStillIsCable() {
+        // UFP product type = 011 (Passive Cable). Bits 29..27.
+        // 3 << 27 = 0x1800_0000
+        let vdo: UInt32 = 0x1800_0000
+        let header = PDVDO.decodeIDHeader(vdo)
+        #expect(header.ufpProductType == .passiveCable)
+        // isCable must remain true for real cables
+        #expect(header.isCable)
+    }
+
+    @Test("UFP active cable (100) is still a cable (SOP' regression guard)")
+    func ufpActiveCableStillIsCable() {
+        // UFP product type = 100 (Active Cable). Bits 29..27.
+        // 4 << 27 = 0x2000_0000
+        let vdo: UInt32 = 0x2000_0000
+        let header = PDVDO.decodeIDHeader(vdo)
+        #expect(header.ufpProductType == .activeCable)
+        #expect(header.isCable)
+    }
+
+    @Test("DFP Hub (001) labels as USB Hub")
+    func dfpHubLabelsAsHub() {
+        // DFP product type = 001 (Hub). Bits 25..23.
+        // 1 << 23 = 0x0080_0000
+        let vdo: UInt32 = 0x0080_0000
+        let header = PDVDO.decodeIDHeader(vdo)
+        #expect(header.dfpProductType == .pdusbHub)
+        #expect(header.dfpProductType.label == "USB Hub")
+        // A hub advertising only the DFP field is not a cable.
+        #expect(!header.isCable)
+    }
+
     // MARK: - Cable VDO
     //
     // Layout (low bits): speed [2:0], _, vbus-through [4], current [6:5], _, maxV [10:9]

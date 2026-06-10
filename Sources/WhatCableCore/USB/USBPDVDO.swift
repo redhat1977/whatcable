@@ -7,14 +7,17 @@ public enum PDVDO {
 
     // MARK: ID Header VDO (always VDO[0])
 
-    public enum ProductType: Int {
-        case undefined = 0
+    /// Product type for the UFP (upstream-facing port) and SOP' cable path.
+    /// Bits 29..27 of the ID Header VDO. Table 6.34, USB PD R3.2.
+    /// At SOP': 011 = Passive Cable, 100 = Active Cable, 110 = VPD.
+    public enum UFPProductType: Int {
+        case undefined = 0       // "Not UFP" / not set
         case pdusbHub = 1
         case pdusbPeripheral = 2
         case passiveCable = 3
         case activeCable = 4
-        case ama = 5            // Alternate Mode Adapter
-        case vpd = 6            // VCONN-Powered Device
+        case ama = 5             // Alternate Mode Adapter
+        case vpd = 6             // VCONN-Powered Device
         case other = 7
 
         public var label: String {
@@ -31,29 +34,67 @@ public enum PDVDO {
         }
     }
 
+    /// Product type for the DFP (downstream-facing port / host) field.
+    /// Bits 25..23 of the ID Header VDO. Table 6.34, USB PD R3.2.
+    /// Raw values overlap with UFPProductType but carry different meanings:
+    /// 010 = Host (not Peripheral), 011 = Power Brick (not Passive Cable).
+    public enum DFPProductType: Int {
+        case undefined = 0       // "Not DFP" / not set
+        case pdusbHub = 1
+        case host = 2
+        case powerBrick = 3
+        // Values 4-7 are reserved in the DFP field per Table 6.34.
+        case reserved4 = 4
+        case reserved5 = 5
+        case reserved6 = 6
+        case reserved7 = 7
+
+        public var label: String {
+            switch self {
+            case .undefined: return String(localized: "Unspecified", bundle: _coreLocalizedBundle)
+            case .pdusbHub: return String(localized: "USB Hub", bundle: _coreLocalizedBundle)
+            case .host: return String(localized: "Host", bundle: _coreLocalizedBundle)
+            case .powerBrick: return String(localized: "Power Brick", bundle: _coreLocalizedBundle)
+            case .reserved4, .reserved5, .reserved6, .reserved7:
+                return String(localized: "Unspecified", bundle: _coreLocalizedBundle)
+            }
+        }
+    }
+
     public struct IDHeader: Hashable {
         public let usbCommHost: Bool
         public let usbCommDevice: Bool
         public let modalOperation: Bool
-        /// UFP product type (set on cables / peripherals)
-        public let ufpProductType: ProductType
-        /// DFP product type (set on hosts / hubs)
-        public let dfpProductType: ProductType
+        /// UFP product type (bits 29..27). Set on cables, peripherals, and
+        /// hubs when acting as a UFP. Also used for the cable field at SOP'.
+        public let ufpProductType: UFPProductType
+        /// DFP product type (bits 25..23). Set on hosts and hubs when acting
+        /// as a DFP. Has different meanings from the UFP field for the same
+        /// raw values (e.g. 010 = Host here, not Peripheral).
+        public let dfpProductType: DFPProductType
         public let vendorID: Int
 
-        /// The product type to label this responder with: the UFP field
-        /// unless it's unspecified, then the DFP field. Mirrors how
-        /// `PortSummary` chooses which field to show, so callers agree on
-        /// what the responder is claiming to be.
-        public var effectiveProductType: ProductType {
-            ufpProductType != .undefined ? ufpProductType : dfpProductType
+        /// True when this responder declares itself a cable (passive or
+        /// active). Cables declare their type via the UFP/SOP' field only.
+        /// The DFP field never encodes cable types, so this is correctly
+        /// derived from ufpProductType alone.
+        public var isCable: Bool {
+            ufpProductType == .passiveCable || ufpProductType == .activeCable
         }
 
-        /// True when this responder declares itself a cable (passive or
-        /// active). Used to tell a cable that answered at the SOP/partner
-        /// address apart from a connected device.
-        public var isCable: Bool {
-            effectiveProductType == .passiveCable || effectiveProductType == .activeCable
+        /// True when the DFP field's raw bits (25..23) happen to match UFP
+        /// cable-type values (3 = passive, 4 = active) even though the spec
+        /// says those bits mean something else in the DFP context.
+        ///
+        /// Some real cables respond at SOP with UFP = undefined and DFP = 3
+        /// or 4, using UFP-context semantics in the DFP field. This is
+        /// non-compliant firmware, but it is present in the corpus (e.g.
+        /// Southchip 0x311C, Shenzhen Kejinming 0x2F16). Use this alongside
+        /// `isCable` (not instead of it) when a best-effort heuristic is
+        /// more appropriate than strict spec decoding.
+        public var dfpRawValueLooksLikeCable: Bool {
+            dfpProductType.rawValue == UFPProductType.passiveCable.rawValue
+                || dfpProductType.rawValue == UFPProductType.activeCable.rawValue
         }
     }
 
@@ -62,8 +103,8 @@ public enum PDVDO {
             usbCommHost: (vdo >> 31) & 1 == 1,
             usbCommDevice: (vdo >> 30) & 1 == 1,
             modalOperation: (vdo >> 26) & 1 == 1,
-            ufpProductType: ProductType(rawValue: Int((vdo >> 27) & 0b111)) ?? .undefined,
-            dfpProductType: ProductType(rawValue: Int((vdo >> 23) & 0b111)) ?? .undefined,
+            ufpProductType: UFPProductType(rawValue: Int((vdo >> 27) & 0b111)) ?? .undefined,
+            dfpProductType: DFPProductType(rawValue: Int((vdo >> 23) & 0b111)) ?? .undefined,
             vendorID: Int(vdo & 0xFFFF)
         )
     }

@@ -293,8 +293,11 @@ struct CableTrustReportTests {
 
     /// Build a synthetic SOP partner identity. `productType` is the ID
     /// Header's UFP product type (3 = passive cable, 2 = peripheral). When
-    /// `inDFP` is true the cable type is placed in the DFP field instead,
-    /// mirroring the corpus shape where `ufp=undefined, dfp=passiveCable`.
+    /// `inDFP` is true the raw value is placed in the DFP field instead,
+    /// mirroring the corpus shape where non-compliant cable firmware puts
+    /// UFP-context values (3 or 4) into the DFP bits with UFP = undefined.
+    /// Per the USB-PD spec Table 6.34, DFP 3 means Power Brick (not Passive
+    /// Cable). `identifiesAsCable` catches this via `dfpRawValueLooksLikeCable`.
     private func partnerIdentity(
         vendorID: Int,
         productType: Int,
@@ -328,8 +331,10 @@ struct CableTrustReportTests {
 
     @Test("DFP-only cable plug still softens the blank e-marker")
     func blankEmarkerSoftenedWhenPlugCableTypeInDFP() {
-        // Corpus reality: the plug's cable type often lives in the DFP field
-        // (ufp=undefined). The fix must mirror PortSummary's UFP-or-DFP logic.
+        // Corpus reality: some cables (e.g. Southchip 0x311C, Kejinming 0x2F16)
+        // respond at SOP with UFP = undefined and DFP bits set to 3 (which the
+        // spec calls Power Brick, but these cables use with UFP-cable semantics).
+        // `identifiesAsCable` catches this via `dfpRawValueLooksLikeCable`.
         let partner = partnerIdentity(vendorID: 0x05AC, productType: 3, inDFP: true)
         let report = CableTrustReport(identity: cableIdentity(vendorID: 0), partner: partner)
         #expect(report.flags == [.eMarkerVIDBlankRegisteredPartner(0x05AC)])

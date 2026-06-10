@@ -436,6 +436,10 @@
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "The vendor ID %1$@ (%2$@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles.";
 "Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)";
 
+/* DFP product type labels (DAR-24). Previously the DFP field was decoded with UFP semantics, which mislabelled a host (010) as "USB Peripheral" and a power brick (011) as "Passive cable". */
+"Host" = "Host";
+"Power Brick" = "Power Brick";
+
 "Battery full" = "Battery full";
 "Thunderbolt" = "Thunderbolt";
 

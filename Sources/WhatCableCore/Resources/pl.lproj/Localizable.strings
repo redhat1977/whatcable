@@ -436,6 +436,10 @@
 "The vendor ID %@ (%@) is a recognised maker in the community USB vendor list, but not in the USB-IF list WhatCable bundles." = "Identyfikator producenta %1$@ (%2$@) należy do rozpoznanego producenta na społecznościowej liście USB, ale nie ma go na liście USB-IF dołączonej do WhatCable.";
 "Cable has an e-marker chip, not read on this connection (needs above 3A or Thunderbolt, or try reconnecting the cable)" = "Kabel ma układ e-marker, nieodczytany na tym połączeniu (wymaga powyżej 3 A lub Thunderbolt, lub spróbuj ponownie podłączyć kabel)";
 
+/* DFP product type labels (DAR-24) */
+"Host" = "Host";
+"Power Brick" = "Zasilacz";
+
 "Battery full" = "Bateria naładowana";
 "Thunderbolt" = "Thunderbolt";
 
