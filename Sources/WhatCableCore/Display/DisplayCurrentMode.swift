@@ -13,8 +13,9 @@ import Foundation
 /// macOS already knows the true mode, so we read it straight from CoreGraphics.
 ///
 /// `width` / `height` are **physical pixels** (a Retina 5K display is 5120 x
-/// 2880 here, not its 2560-point logical size). Pure value type, no platform
-/// imports, so it compiles on every target; the Windows backend leaves it nil.
+/// 2880 here, not its 2560-point logical size). Pure value type with no platform
+/// imports; the Darwin backend populates it from CoreGraphics, and it is left
+/// nil in tests and whenever there's no live mode to read.
 public struct DisplayCurrentMode: Codable, Sendable, Equatable, Hashable {
     /// Active horizontal pixels of the current mode (physical, not points).
     public let width: Int
