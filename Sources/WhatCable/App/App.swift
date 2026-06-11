@@ -361,17 +361,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         // Skip the IOKit read entirely when the toggle is off. This is the
         // default state, so most users never pay the bulk-read cost.
         guard AppSettings.shared.showChargingWatts else {
-            guard lastShownWatts != nil else { return }
-            lastShownWatts = nil
-            let widthBefore = button.frame.width
-            button.attributedTitle = NSAttributedString(string: "")
-            button.title = ""
-            button.imagePosition = .imageOnly
-            let widthAfter = button.frame.width
-            if widthAfter != widthBefore, let popover, popover.isShown {
-                popover.performClose(nil)
-                togglePopover(from: button)
-            }
+            // Guard on whether the label is actually displayed, not the cache.
+            // The sink nils lastShownWatts before calling here, so the old
+            // `guard lastShownWatts != nil` check would always bail out early
+            // and leave the stale "NNW" text in the menu bar until restart.
+            guard !button.attributedTitle.string.isEmpty else { return }
+            clearWattsLabel(on: button)
             return
         }
 
@@ -397,17 +392,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
                 togglePopover(from: button)
             }
         } else {
-            guard lastShownWatts != nil else { return }
-            lastShownWatts = nil
-            let widthBefore = button.frame.width
-            button.attributedTitle = NSAttributedString(string: "")
-            button.title = ""
-            button.imagePosition = .imageOnly
-            let widthAfter = button.frame.width
-            if widthAfter != widthBefore, let popover, popover.isShown {
-                popover.performClose(nil)
-                togglePopover(from: button)
-            }
+            // Guard on actual displayed state, not the cache, for the same
+            // reason as the toggle-off branch above.
+            guard !button.attributedTitle.string.isEmpty else { return }
+            clearWattsLabel(on: button)
+        }
+    }
+
+    /// Clears the watts label from the status bar button and restores the
+    /// icon-only layout. Reseats the popover if the button width changes
+    /// (Settings renders inside the popover; an unconditional reseat would
+    /// blink it unnecessarily).
+    private func clearWattsLabel(on button: NSStatusBarButton) {
+        lastShownWatts = nil
+        let widthBefore = button.frame.width
+        button.attributedTitle = NSAttributedString(string: "")
+        button.title = ""
+        button.imagePosition = .imageOnly
+        let widthAfter = button.frame.width
+        if widthAfter != widthBefore, let popover, popover.isShown {
+            popover.performClose(nil)
+            togglePopover(from: button)
         }
     }
 
