@@ -253,7 +253,9 @@ public enum PDVDO {
         let speedBits = Int(vdo & 0b111)
         let decodedSpeed = CableSpeed(rawValue: speedBits)
         let speed = decodedSpeed ?? .usb20
-        let vbusThrough = (vdo >> 4) & 1 == 1
+        // Bit 4 is "VBUS Through Cable" in Active Cable VDO1 (Table 6.43).
+        // For passive cables (Table 6.42) bits 4..3 are Reserved and must not be read.
+        let vbusThrough = isActive && (vdo >> 4) & 1 == 1
         let currentBits = Int((vdo >> 5) & 0b11)
         let decodedCurrent = CableCurrent(rawValue: currentBits)
         let current = decodedCurrent ?? .usbDefault

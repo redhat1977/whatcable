@@ -123,17 +123,43 @@ struct PDVDOTests {
 
     @Test("Thunderbolt cable 5A 40Gbps")
     func thunderboltCable_5A_40Gbps() {
-        // speed=3 (USB4 Gen3), current=2 (5A) -> 2<<5=0x40, vbus-through bit 4=1
+        // speed=3 (USB4 Gen3), current=2 (5A) -> 2<<5=0x40
+        // Bit 4 is set in the raw VDO, but for a passive cable Table 6.42
+        // defines bits 4..3 as Reserved. The decoder must ignore bit 4 and
+        // report vbusThroughCable = false.
         let vdo: UInt32 = 0b011 | (1 << 4) | (2 << 5) | Self.validLatency
         let cable = PDVDO.decodeCableVDO(vdo, isActive: false)
         #expect(cable.speed == .usb4Gen3)
         #expect(cable.current == .fiveAmp)
-        #expect(cable.vbusThroughCable)
+        #expect(!cable.vbusThroughCable) // reserved bit for passive; must always be false
         #expect(cable.maxVoltageEncoded == 0)
         #expect(cable.maxVolts == 20)
         #expect(cable.maxWatts == 100) // 20V * 5A
         #expect(cable.cableType == .passive)
         #expect(cable.decodeWarnings.isEmpty)
+    }
+
+    // MARK: - VBUS Through Cable (DAR-26)
+    // Bit 4 is "VBUS Through Cable" only in Active Cable VDO1 (Table 6.43).
+    // For passive cables (Table 6.42) bits 4..3 are Reserved and have no meaning.
+
+    @Test("Passive cable with bit 4 set reports vbusThroughCable = false (DAR-26)")
+    func passiveCable_Bit4Set_VBUSThroughIsFalse() {
+        // VDO with bit 4 = 1, otherwise a plain passive cable.
+        // Per Table 6.42 the bit is Reserved for passive cables, so the
+        // decoder must return false regardless of what the raw bit contains.
+        let vdo: UInt32 = (1 << 4) | (1 << 5) | Self.validLatency  // 3A, bit4=1
+        let cable = PDVDO.decodeCableVDO(vdo, isActive: false)
+        #expect(!cable.vbusThroughCable, "bit 4 is Reserved for passive cables and must not be interpreted as VBUS Through")
+    }
+
+    @Test("Active cable with bit 4 set reports vbusThroughCable = true (DAR-26)")
+    func activeCable_Bit4Set_VBUSThroughIsTrue() {
+        // VDO with bit 4 = 1 for an active cable.
+        // Per Table 6.43 bit 4 is "VBUS Through Cable" for active cables.
+        let vdo: UInt32 = (1 << 4) | (1 << 5) | Self.validLatency | Self.validActiveTermination
+        let cable = PDVDO.decodeCableVDO(vdo, isActive: true)
+        #expect(cable.vbusThroughCable, "bit 4 is VBUS Through Cable for active cables and must be true when set")
     }
 
     @Test("Cheap USB2 3A cable")
