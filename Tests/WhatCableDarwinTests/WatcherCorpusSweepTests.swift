@@ -501,12 +501,14 @@ struct HPMInterfaceProbeSweepTests {
         }
 
         // Guard: the corpus is non-trivial. When probe-17 files are absent
-        // (fresh clone), foldersScanned == 0 and we skip silently. When files
-        // are present, require a meaningful yield.
-        if foldersScanned > 0 {
+        // (fresh clone) or only DAR-138 fixture subsets are present (~30
+        // folders), skip the absolute floor; the per-fixture DAR-138 tests
+        // carry their own assertions there. The floor below is calibrated
+        // for the full on-disk corpus (240+ probe-17 folders).
+        if foldersScanned >= 100 {
             // Each folder contributes roughly 2-4 HPM blocks; 100 models from
-            // 50+ folders is a reasonable floor. Calibrated against the 460-block
-            // corpus total with ~80-85% being real physical ports.
+            // the full corpus is a conservative floor (observed yield: 460
+            // blocks, ~80-85% real physical ports).
             #expect(
                 modelsProduced >= 100,
                 "HPM sweep: only \(modelsProduced) models from \(blocksTotal) blocks across \(foldersScanned) folders; expected at least 100"
@@ -788,9 +790,10 @@ struct LiquidDetectionSweepTests {
             }
         }
 
-        if foldersScanned > 0 {
+        if foldersScanned >= 100 {
             // Corpus has 252 nested AppleHPMLDCMType2 blocks across 94 folders.
-            // Require a meaningful yield when probe-17 files are present.
+            // Absolute floor only when the full corpus is on disk; fixture-only
+            // checkouts are covered by the per-fixture DAR-138 tests.
             #expect(
                 blocksTotal >= 50,
                 "LDCM sweep: only \(blocksTotal) blocks from \(foldersScanned) folders; expected at least 50"
