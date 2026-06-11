@@ -92,15 +92,16 @@ public final class PowerSourceWatcher: ObservableObject {
     private func handleRemoved(_ iter: io_iterator_t) {
         while case let service = IOIteratorNext(iter), service != 0 {
             var entryID: UInt64 = 0
-            IORegistryEntryGetRegistryEntryID(service, &entryID)
-            sources.removeAll { $0.id == entryID }
+            if IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS {
+                sources.removeAll { $0.id == entryID }
+            }
             IOObjectRelease(service)
         }
     }
 
     nonisolated static func makeSource(from service: io_service_t) -> PowerSource? {
         var entryID: UInt64 = 0
-        IORegistryEntryGetRegistryEntryID(service, &entryID)
+        guard IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS else { return nil }
 
         // Read keys individually rather than fetching the full property
         // dictionary. The bulk fetch (IORegistryEntryCreateCFProperties)

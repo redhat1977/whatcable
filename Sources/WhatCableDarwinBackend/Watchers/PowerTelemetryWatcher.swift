@@ -454,7 +454,9 @@ public final class PowerTelemetryWatcher: ObservableObject {
            let match = tied.first(where: { $0.currentMA == operatingCurrentMA }) {
             return (match.voltageMV, match.currentMA)
         }
-        let pick = tied.max { $0.voltageMV < $1.voltageMV }!
+        // tied.count >= 2 here (count == 1 returned above), so max(by:) is
+        // guaranteed to return a value; the guard is defensive documentation.
+        guard let pick = tied.max(by: { $0.voltageMV < $1.voltageMV }) else { return nil }
         return (pick.voltageMV, pick.currentMA)
     }
 

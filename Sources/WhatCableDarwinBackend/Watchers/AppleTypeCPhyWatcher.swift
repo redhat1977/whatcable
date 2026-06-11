@@ -92,9 +92,10 @@ public final class AppleTypeCPhyWatcher: ObservableObject {
                         rebuilt.append(phy)
                     }
                     var entryID: UInt64 = 0
-                    IORegistryEntryGetRegistryEntryID(service, &entryID)
-                    liveEntryIDs.insert(entryID)
-                    registerInterest(for: service, entryID: entryID)
+                    if IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS {
+                        liveEntryIDs.insert(entryID)
+                        registerInterest(for: service, entryID: entryID)
+                    }
                 }
             }
         }

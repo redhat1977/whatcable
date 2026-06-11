@@ -86,15 +86,16 @@ public final class USB3TransportWatcher: ObservableObject {
     private func handleRemoved(_ iter: io_iterator_t) {
         while case let service = IOIteratorNext(iter), service != 0 {
             var entryID: UInt64 = 0
-            IORegistryEntryGetRegistryEntryID(service, &entryID)
-            transports.removeAll { $0.id == entryID }
+            if IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS {
+                transports.removeAll { $0.id == entryID }
+            }
             IOObjectRelease(service)
         }
     }
 
     private func makeTransport(from service: io_service_t) -> USB3Transport? {
         var entryID: UInt64 = 0
-        IORegistryEntryGetRegistryEntryID(service, &entryID)
+        guard IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS else { return nil }
 
         // Read keys individually rather than fetching the full property
         // dictionary. The bulk fetch (IORegistryEntryCreateCFProperties)

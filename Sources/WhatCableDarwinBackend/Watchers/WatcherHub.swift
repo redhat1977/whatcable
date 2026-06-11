@@ -23,7 +23,6 @@ public final class WatcherHub {
     private var pollTask: Task<Void, Never>?
     private var burstTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
-    private var isRefreshing = false
 
     private init() {}
 
@@ -45,8 +44,6 @@ public final class WatcherHub {
     }
 
     public func refreshAll() {
-        isRefreshing = true
-        defer { isRefreshing = false }
         portWatcher.refresh()
         powerWatcher.refresh()
         pdWatcher.refresh()
@@ -71,7 +68,7 @@ public final class WatcherHub {
         deviceWatcher.$devices
             .dropFirst()
             .sink { [weak self] _ in
-                guard let self, !self.isRefreshing else { return }
+                guard let self else { return }
                 self.scheduleBurst()
             }
             .store(in: &cancellables)
@@ -79,7 +76,7 @@ public final class WatcherHub {
         powerWatcher.$sources
             .dropFirst()
             .sink { [weak self] _ in
-                guard let self, !self.isRefreshing else { return }
+                guard let self else { return }
                 self.scheduleBurst()
             }
             .store(in: &cancellables)
@@ -87,7 +84,7 @@ public final class WatcherHub {
         pdWatcher.$identities
             .dropFirst()
             .sink { [weak self] _ in
-                guard let self, !self.isRefreshing else { return }
+                guard let self else { return }
                 self.scheduleBurst()
             }
             .store(in: &cancellables)

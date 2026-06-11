@@ -173,7 +173,7 @@ public final class AppleHPMInterfaceWatcher: ObservableObject {
 
     private func makePort(from service: io_service_t) -> AppleHPMInterface? {
         var entryID: UInt64 = 0
-        IORegistryEntryGetRegistryEntryID(service, &entryID)
+        guard IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS else { return nil }
 
         // Build the full registry entry name with its location suffix
         // (e.g. "Port-USB-C@1"). `IORegistryEntryGetName` returns just the
@@ -195,7 +195,7 @@ public final class AppleHPMInterfaceWatcher: ObservableObject {
         }
 
         var classBuf = [CChar](repeating: 0, count: 128)
-        IOObjectGetClass(service, &classBuf)
+        guard IOObjectGetClass(service, &classBuf) == KERN_SUCCESS else { return nil }
         let className = String(cString: classBuf)
 
         // Read keys individually rather than fetching the full property

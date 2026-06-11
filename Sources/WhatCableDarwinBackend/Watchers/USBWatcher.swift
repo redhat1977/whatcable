@@ -86,15 +86,16 @@ public final class USBWatcher: ObservableObject {
     private func handleRemoved(iterator: io_iterator_t) {
         while case let service = IOIteratorNext(iterator), service != 0 {
             var entryID: UInt64 = 0
-            IORegistryEntryGetRegistryEntryID(service, &entryID)
-            devices.removeAll { $0.id == entryID }
+            if IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS {
+                devices.removeAll { $0.id == entryID }
+            }
             IOObjectRelease(service)
         }
     }
 
     private func makeDevice(from service: io_service_t) -> USBDevice? {
         var entryID: UInt64 = 0
-        IORegistryEntryGetRegistryEntryID(service, &entryID)
+        guard IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS else { return nil }
 
         // USBWatcher uses the bulk fetch intentionally: it iterates all keys
         // from the returned dictionary to populate `rawProperties` on USBDevice.

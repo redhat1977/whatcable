@@ -98,14 +98,14 @@ public final class TRMTransportWatcher: ObservableObject {
                     defer { IOObjectRelease(service) }
 
                     var entryID: UInt64 = 0
-                    IORegistryEntryGetRegistryEntryID(service, &entryID)
+                    guard IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS else { continue }
 
                     func read(_ key: String) -> Any? {
                         IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
                     }
 
                     var classBuf = [CChar](repeating: 0, count: 128)
-                    IOObjectGetClass(service, &classBuf)
+                    guard IOObjectGetClass(service, &classBuf) == KERN_SUCCESS else { continue }
                     let className = String(cString: classBuf)
                     let transportType = Self.transportType(from: className)
 
@@ -132,7 +132,7 @@ public final class TRMTransportWatcher: ObservableObject {
             defer { IOObjectRelease(service) }
 
             var entryID: UInt64 = 0
-            IORegistryEntryGetRegistryEntryID(service, &entryID)
+            guard IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS else { continue }
 
             // Read keys individually rather than fetching the full property
             // dictionary. The bulk fetch (IORegistryEntryCreateCFProperties)
@@ -145,7 +145,7 @@ public final class TRMTransportWatcher: ObservableObject {
             }
 
             var classBuf = [CChar](repeating: 0, count: 128)
-            IOObjectGetClass(service, &classBuf)
+            guard IOObjectGetClass(service, &classBuf) == KERN_SUCCESS else { continue }
             let className = String(cString: classBuf)
             let transportType = Self.transportType(from: className)
 
@@ -165,9 +165,10 @@ public final class TRMTransportWatcher: ObservableObject {
     private func handleRemoved(_ iter: io_iterator_t) {
         while case let service = IOIteratorNext(iter), service != 0 {
             var entryID: UInt64 = 0
-            IORegistryEntryGetRegistryEntryID(service, &entryID)
-            transports.removeAll { $0.id == entryID }
-            cioCapabilities.removeAll { $0.id == entryID }
+            if IORegistryEntryGetRegistryEntryID(service, &entryID) == KERN_SUCCESS {
+                transports.removeAll { $0.id == entryID }
+                cioCapabilities.removeAll { $0.id == entryID }
+            }
             IOObjectRelease(service)
         }
     }
