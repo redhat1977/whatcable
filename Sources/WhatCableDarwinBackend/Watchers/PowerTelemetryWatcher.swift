@@ -294,7 +294,10 @@ public final class PowerTelemetryWatcher: ObservableObject {
         )
     }
 
-    private static func portPowerSamples(from value: Any?, portKeys: [String]) -> [PortPowerSample] {
+    // Internal (not private) so tests can call it directly without live IOKit.
+    // The logic is pure: no IOKit, no MainActor. nonisolated so it is callable
+    // from non-isolated test code without wrapping in a Task.
+    nonisolated static func portPowerSamples(from value: Any?, portKeys: [String]) -> [PortPowerSample] {
         wcArray(value).enumerated().compactMap { offset, item in
             let dict = wcDictionary(item)
             guard !dict.isEmpty else { return nil }

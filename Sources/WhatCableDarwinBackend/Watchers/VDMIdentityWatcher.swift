@@ -162,6 +162,27 @@ public final class VDMIdentityWatcher: ObservableObject {
             IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
         }
 
+        return Self.parseUpdate(
+            read: read,
+            className: endpoint == .sop
+                ? "IOPortTransportComponentCCUSBPDSOP"
+                : "IOPortTransportComponentCCUSBPDSOPp",
+            endpoint: endpoint,
+            portIndex: wcPortIndex(read: read, service: service),
+            portType: wcPortType(read: read, service: service)
+        )
+    }
+
+    /// Parse a `VDMIdentityUpdate` from a property-read closure and pre-resolved
+    /// context values. Extracted from `makeUpdate(from:)` so corpus-replay tests
+    /// can drive the parse logic without real IOKit services.
+    internal nonisolated static func parseUpdate(
+        read: (String) -> Any?,
+        className: String,
+        endpoint: Endpoint,
+        portIndex: Int,
+        portType: String
+    ) -> VDMIdentityUpdate? {
         let metadata = wcDictionary(read("Metadata"))
         let vdos = wcArray(metadata["VDOs"]).compactMap(wcData)
         let identity = VDMIdentity(
@@ -177,8 +198,8 @@ public final class VDMIdentityWatcher: ObservableObject {
                 ?? (read("Product Type Description") as? String)
         )
         return VDMIdentityUpdate(
-            portIndex: wcPortIndex(read: read, service: service),
-            portType: wcPortType(read: read, service: service),
+            portIndex: portIndex,
+            portType: portType,
             endpoint: endpoint,
             identity: identity
         )

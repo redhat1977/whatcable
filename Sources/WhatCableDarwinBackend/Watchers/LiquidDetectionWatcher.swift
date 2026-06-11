@@ -132,6 +132,21 @@ public final class LiquidDetectionWatcher: ObservableObject {
             IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
         }
 
+        return Self.parseUpdate(
+            read: read,
+            portIndex: wcPortIndex(read: read, service: service),
+            portType: wcPortType(read: read, service: service)
+        )
+    }
+
+    /// Parse a `LiquidDetectionUpdate` from a property-read closure and
+    /// pre-resolved port context. Extracted from `makeUpdate(from:)` so
+    /// corpus-replay tests can drive the parse logic without real IOKit services.
+    internal nonisolated static func parseUpdate(
+        read: (String) -> Any?,
+        portIndex: Int,
+        portType: String
+    ) -> LiquidDetectionUpdate? {
         let state = (read("StateDescription") as? String)
             ?? read("State").map { String(wcInt($0)) }
             ?? "Unknown"
@@ -142,8 +157,8 @@ public final class LiquidDetectionWatcher: ObservableObject {
             mitigationsEnabled: wcBool(read("MitigationsEnabled"))
         )
         return LiquidDetectionUpdate(
-            portIndex: wcPortIndex(read: read, service: service),
-            portType: wcPortType(read: read, service: service),
+            portIndex: portIndex,
+            portType: portType,
             status: status
         )
     }

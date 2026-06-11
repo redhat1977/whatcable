@@ -126,6 +126,28 @@ public final class USBPDSOPWatcher: ObservableObject {
             ? String(cString: classNameBuf)
             : nil
 
+        // Walk the parent chain to capture the HPM controller UUID.
+        // SOP/SOP' nodes sit at Port-USB-C@N/CC/SOP, so the controller is
+        // ~3-4 steps up (CC -> AppleHPMInterfaceType10 -> AppleHPMDeviceHALType3).
+        let uuid = wcHPMControllerUUID(for: service)
+
+        return Self.parseIdentity(
+            entryID: entryID,
+            read: read,
+            className: className,
+            hpmControllerUUID: uuid
+        )
+    }
+
+    /// Parse a `USBPDSOP` from a property-read closure plus metadata that the
+    /// IOKit wrapper already resolved. Extracted from `makeIdentity(from:)` so
+    /// corpus-replay tests can drive the parse logic without real IOKit services.
+    internal nonisolated static func parseIdentity(
+        entryID: UInt64,
+        read: (String) -> Any?,
+        className: String?,
+        hpmControllerUUID: String?
+    ) -> USBPDSOP? {
         let endpoint = Self.endpoint(read: read, className: className)
         let parent = Self.parentPortIdentity(read: read)
         let specRev = (read("Specification Revision") as? NSNumber)?.intValue ?? 0
@@ -140,11 +162,6 @@ public final class USBPDSOPWatcher: ObservableObject {
             return PDVDO.vdoFromData(data)
         }
 
-        // Walk the parent chain to capture the HPM controller UUID.
-        // SOP/SOP' nodes sit at Port-USB-C@N/CC/SOP, so the controller is
-        // ~3-4 steps up (CC -> AppleHPMInterfaceType10 -> AppleHPMDeviceHALType3).
-        let uuid = wcHPMControllerUUID(for: service)
-
         return USBPDSOP(
             id: entryID,
             endpoint: endpoint,
@@ -155,7 +172,7 @@ public final class USBPDSOPWatcher: ObservableObject {
             bcdDevice: bcdDevice,
             vdos: vdos,
             specRevision: specRev,
-            hpmControllerUUID: uuid
+            hpmControllerUUID: hpmControllerUUID
         )
     }
 
