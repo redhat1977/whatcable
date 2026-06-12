@@ -34,6 +34,8 @@ targets:
     dependencies:
       - package: WhatCable
         product: WhatCableCore
+      - package: WhatCable
+        product: WhatCableDarwinBackend
       - sdk: AppIntents.framework
     settings:
       base:

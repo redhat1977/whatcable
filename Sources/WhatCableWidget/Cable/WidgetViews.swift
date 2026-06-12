@@ -12,13 +12,13 @@ struct CableWidgetEntryView: View {
         if let snapshot = entry.snapshot, !snapshot.ports.isEmpty {
             switch family {
             case .systemSmall:
-                SmallWidgetView(port: resolveSmallPort(snapshot))
+                SmallWidgetView(port: resolveSmallPort(snapshot), snapshotDate: entry.date)
             case .systemMedium:
-                MediumWidgetView(ports: resolveFilteredPorts(snapshot))
+                MediumWidgetView(ports: resolveFilteredPorts(snapshot), snapshotDate: entry.date)
             case .systemLarge:
-                LargeWidgetView(ports: resolveFilteredPorts(snapshot))
+                LargeWidgetView(ports: resolveFilteredPorts(snapshot), snapshotDate: entry.date)
             default:
-                MediumWidgetView(ports: resolveFilteredPorts(snapshot))
+                MediumWidgetView(ports: resolveFilteredPorts(snapshot), snapshotDate: entry.date)
             }
         } else {
             EmptyStateView()
@@ -357,14 +357,55 @@ struct PortRow: View {
     }
 }
 
+// MARK: - Snapshot timestamp caption
+
+/// Snapshot time caption shown in the header of each widget size.
+///
+/// Uses `Text(date, style: .time)` / `.relative` so WidgetKit keeps the
+/// displayed value current without needing the provider to run again. The
+/// render server updates Text date styles in-place.
+///
+/// The caption communicates "this is a snapshot, not live" by design.
+/// On medium and large, a clock icon precedes the time. On small,
+/// `compact: true` switches to a relative style ("5m ago") to save the
+/// tighter horizontal space; the icon is omitted there.
+struct SnapshotTimestamp: View {
+    let date: Date
+    var compact: Bool = false
+
+    var body: some View {
+        if compact {
+            Text(date, style: .relative)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+        } else {
+            HStack(spacing: WidgetMetrics.xxs) {
+                Image(systemName: "clock")
+                    .font(.caption2)
+                Text(date, style: .time)
+                    .font(.caption2)
+            }
+            .foregroundStyle(.tertiary)
+            .lineLimit(1)
+        }
+    }
+}
+
 // MARK: - Small: single featured port
 
 struct SmallWidgetView: View {
     let port: WidgetSnapshot.PortEntry
+    let snapshotDate: Date
 
     var body: some View {
         VStack(alignment: .leading, spacing: WidgetMetrics.s) {
-            WidgetHeader(title: "WhatCable")
+            HStack {
+                WidgetHeader(title: "WhatCable")
+                Spacer(minLength: 0)
+                // Small has limited space: use relative time ("5m ago").
+                SnapshotTimestamp(date: snapshotDate, compact: true)
+            }
             Spacer(minLength: 0)
 
             // Same accent-bar treatment as the list rows, just larger. No tinted
@@ -406,13 +447,18 @@ struct SmallWidgetView: View {
 
 struct MediumWidgetView: View {
     let ports: [WidgetSnapshot.PortEntry]
+    let snapshotDate: Date
 
     var body: some View {
         let shown = Array(ports.prefix(3))
         let overflow = ports.count - shown.count
 
         VStack(alignment: .leading, spacing: WidgetMetrics.s) {
-            WidgetHeader(title: "WhatCable")
+            HStack {
+                WidgetHeader(title: "WhatCable")
+                Spacer(minLength: 0)
+                SnapshotTimestamp(date: snapshotDate)
+            }
             VStack(spacing: WidgetMetrics.s) {
                 // Show the detail line only when there's room (1-2 ports),
                 // and let it wrap to 2 lines since the box has the height.
@@ -448,13 +494,18 @@ struct OverflowRow: View {
 
 struct LargeWidgetView: View {
     let ports: [WidgetSnapshot.PortEntry]
+    let snapshotDate: Date
 
     var body: some View {
         let shown = Array(ports.prefix(6))
         let overflow = ports.count - shown.count
         VStack(alignment: .leading, spacing: 0) {
-            WidgetHeader(icon: "cable.connector.horizontal", title: "WhatCable")
-                .padding(.bottom, WidgetMetrics.s)
+            HStack {
+                WidgetHeader(icon: "cable.connector.horizontal", title: "WhatCable")
+                Spacer(minLength: 0)
+                SnapshotTimestamp(date: snapshotDate)
+            }
+            .padding(.bottom, WidgetMetrics.s)
 
             ForEach(Array(shown.enumerated()), id: \.element.id) { index, port in
                 if index > 0 {

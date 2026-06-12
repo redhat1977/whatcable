@@ -3,9 +3,27 @@ import WidgetKit
 import AppIntents
 import os.log
 import WhatCableCore
+import WhatCableDarwinBackend
 
+/// Builds a timeline by reading IOKit directly on every provider run, with
+/// a fallback to the App Group snapshot written by the main app.
+///
+/// Widgets are never live: the OS alone decides when to call the provider.
+/// Every snapshot shown is "correct as of the last OS-triggered refresh."
+/// The main app also pushes reloads via WidgetCenter on cable state changes,
+/// which brings the widget up to date sooner when the app is running.
+///
+/// Data source priority:
+///   1. Direct IOKit read (one-shot per provider run, no persistent watcher).
+///      Works even when the main app is not running. The widget extension
+///      sandbox permits IOKit registry reads (proven by the App Store
+///      feasibility study).
+///   2. App Group snapshot written by the main app. Used as fallback when
+///      the IOKit read returns nothing (empty port list) or fails.
+///
+/// Staleness blanking has been removed. An old snapshot is still useful;
+/// the "as of HH:MM" caption tells the user when it was captured.
 struct CableTimelineProvider: AppIntentTimelineProvider {
-    private let staleAfter: TimeInterval = 5 * 60
     private let log = Logger(
         subsystem: "uk.whatcable.whatcable",
         category: "widget-timeline"
@@ -21,50 +39,113 @@ struct CableTimelineProvider: AppIntentTimelineProvider {
         if context.isPreview {
             return .placeholder
         }
-        return currentEntry(for: configuration)
+        return await currentEntry(for: configuration)
     }
 
     func timeline(for configuration: CableWidgetIntent, in context: Context) async -> Timeline<CableWidgetEntry> {
-        let entry = currentEntry(for: configuration)
-        // When the app isn't running there is no snapshot data. Return .never
-        // so the extension sleeps until WidgetDataWriter pushes a reload.
-        let policy: TimelineReloadPolicy = entry.snapshot != nil
-            ? .after(Date().addingTimeInterval(60))
-            : .never
-        return Timeline(entries: [entry], policy: policy)
+        let entry = await currentEntry(for: configuration)
+        // Always request a refresh in ~60s. The OS may honour this later or
+        // earlier depending on budget; this is a hint, not a guarantee.
+        return Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(60)))
     }
 
-    // MARK: - Read from App Group
+    // MARK: - Live IOKit read (one-shot)
 
-    private func currentEntry(for configuration: CableWidgetIntent) -> CableWidgetEntry {
+    /// Reads the current cable state directly from IOKit in this extension
+    /// process. One-shot: starts each watcher, refreshes once, reads, and
+    /// discards the objects. This is simpler and more robust than keeping a
+    /// singleton alive across provider calls (the OS can suspend and resume
+    /// the extension process between runs, and a static singleton just means
+    /// stale cached state in those cases). The overhead is minimal: IOKit
+    /// match notifications are not needed here, only a single synchronous
+    /// property scan.
+    @MainActor
+    private func liveSnapshot() -> WidgetSnapshot? {
+        let portWatcher = AppleHPMInterfaceWatcher()
+        let powerWatcher = PowerSourceWatcher()
+        let pdWatcher = USBPDSOPWatcher()
+        let usbWatcher = USBWatcher()
+        let tbWatcher = IOIOThunderboltSwitchWatcher()
+        let usb3Watcher = USB3TransportWatcher()
+        let trmWatcher = TRMTransportWatcher()
+        let phyWatcher = AppleTypeCPhyWatcher()
+        let displayWatcher = DisplayPortTransportWatcher()
+
+        portWatcher.start()
+        powerWatcher.start()
+        pdWatcher.start()
+        usbWatcher.start()
+        tbWatcher.start()
+        usb3Watcher.start()
+        trmWatcher.start()
+        phyWatcher.start()
+        displayWatcher.start()
+
+        portWatcher.refresh()
+        powerWatcher.refresh()
+        pdWatcher.refresh()
+        tbWatcher.refresh()
+        usb3Watcher.refresh()
+        trmWatcher.refresh()
+        phyWatcher.refresh()
+        displayWatcher.refresh()
+
+        let ports = portWatcher.ports
+        guard !ports.isEmpty else {
+            log.debug("Live IOKit read returned no ports; will fall back to cached snapshot")
+            return nil
+        }
+
+        let battery = AppleSmartBatteryReader.read()
+        let cable = CableSnapshot(
+            ports: ports,
+            powerSources: powerWatcher.sources,
+            identities: pdWatcher.identities,
+            usbDevices: usbWatcher.devices,
+            adapter: SystemPower.currentAdapter(),
+            thunderboltSwitches: tbWatcher.switches,
+            isDesktopMac: battery.isDesktopMac,
+            federatedIdentities: battery.federatedIdentities,
+            usb3Transports: usb3Watcher.transports,
+            trmTransports: trmWatcher.transports,
+            cioCapabilities: trmWatcher.cioCapabilities,
+            typeCPhys: phyWatcher.phys,
+            displayPorts: displayWatcher.statuses.map(\.status),
+            batteryFullyCharged: battery.battery?.fullyCharged,
+            batteryIsCharging: battery.battery?.isCharging
+        )
+
+        log.debug("Live IOKit read: \(ports.count) ports")
+        return WidgetSnapshot(from: cable)
+    }
+
+    // MARK: - App Group fallback
+
+    private func cachedSnapshot() -> WidgetSnapshot? {
         guard let url = WidgetSnapshot.sharedFileURL else {
             log.error("Failed to resolve App Group container URL for \(WidgetSnapshot.appGroupID, privacy: .public)")
-            return CableWidgetEntry(date: Date(), snapshot: nil, configuration: configuration)
+            return nil
         }
-
-        let data: Data
-        do {
-            data = try Data(contentsOf: url)
-        } catch {
-            log.error("Failed to read widget snapshot: \(error.localizedDescription, privacy: .public)")
-            return CableWidgetEntry(date: Date(), snapshot: nil, configuration: configuration)
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        let snapshot = try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
+        if snapshot != nil {
+            log.debug("Using cached App Group snapshot as fallback")
         }
+        return snapshot
+    }
 
-        let snapshot: WidgetSnapshot
-        do {
-            snapshot = try JSONDecoder().decode(WidgetSnapshot.self, from: data)
-        } catch {
-            log.error("Failed to decode widget snapshot (\(data.count) bytes): \(error.localizedDescription, privacy: .public)")
-            return CableWidgetEntry(date: Date(), snapshot: nil, configuration: configuration)
+    // MARK: - Entry builder
+
+    /// Live IOKit read first; fall back to the App Group cache.
+    /// Never blanks: an old snapshot is shown as-is with the timestamp caption.
+    private func currentEntry(for configuration: CableWidgetIntent) async -> CableWidgetEntry {
+        if let live = await liveSnapshot() {
+            return CableWidgetEntry(date: live.timestamp, snapshot: live, configuration: configuration)
         }
-
-        let age = Date().timeIntervalSince(snapshot.timestamp)
-        guard age <= staleAfter else {
-            log.error("Widget snapshot is stale (\(Int(age))s old), showing empty state")
-            return CableWidgetEntry(date: Date(), snapshot: nil, configuration: configuration)
+        if let cached = cachedSnapshot() {
+            return CableWidgetEntry(date: cached.timestamp, snapshot: cached, configuration: configuration)
         }
-
-        return CableWidgetEntry(date: snapshot.timestamp, snapshot: snapshot, configuration: configuration)
+        return CableWidgetEntry(date: Date(), snapshot: nil, configuration: configuration)
     }
 }
 

@@ -4,7 +4,6 @@ import os.log
 import WhatCableCore
 
 struct PowerTimelineProvider: TimelineProvider {
-    private let staleAfter: TimeInterval = 5 * 60
     private let log = Logger(
         subsystem: "uk.whatcable.whatcable",
         category: "power-widget-timeline"
@@ -25,12 +24,10 @@ struct PowerTimelineProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PowerMonitorEntry>) -> Void) {
         let entry = currentEntry()
-        // When the app isn't running there is no snapshot data. Return .never
-        // so the extension sleeps until WidgetDataWriter pushes a reload.
-        let policy: TimelineReloadPolicy = entry.snapshot != nil
-            ? .after(Date().addingTimeInterval(60))
-            : .never
-        completion(Timeline(entries: [entry], policy: policy))
+        // Always request a refresh in ~60s. The OS may honour this later or
+        // earlier depending on budget. Power data only comes from the main app's
+        // Pro plugin contributors, so the timeline relies on the cached snapshot.
+        completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(60))))
     }
 
     private func currentEntry() -> PowerMonitorEntry {
@@ -41,10 +38,8 @@ struct PowerTimelineProvider: TimelineProvider {
               let snapshot = try? JSONDecoder().decode(WidgetSnapshot.self, from: data) else {
             return PowerMonitorEntry(date: Date(), snapshot: nil)
         }
-        let age = Date().timeIntervalSince(snapshot.timestamp)
-        guard age <= staleAfter else {
-            return PowerMonitorEntry(date: Date(), snapshot: nil)
-        }
+        // No staleness blanking: an old snapshot is shown as-is.
+        // The "as of" caption tells the user when the data was captured.
         return PowerMonitorEntry(date: snapshot.timestamp, snapshot: snapshot)
     }
 }

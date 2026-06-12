@@ -231,6 +231,139 @@ extension WidgetSnapshot {
     }
 }
 
+// MARK: - Conversion from CableSnapshot
+
+extension WidgetSnapshot {
+    /// Build a WidgetSnapshot from a live CableSnapshot.
+    ///
+    /// Called by the widget's timeline provider after a direct IOKit read.
+    /// The main app's WidgetDataWriter path is richer (it has Pro power
+    /// telemetry and live per-port wattage histories from plugin contributors).
+    /// This conversion produces the same structural shape with these differences:
+    ///
+    /// - `recentPower`: always empty. Power history comes from the running app's
+    ///   Pro plugin contributors. The widget shows it when the app has written
+    ///   it to the cache; the live-read path just leaves it blank rather than
+    ///   inventing values. Callers that want the chart should prefer the cached
+    ///   snapshot's recentPower for any port whose structural identity matches.
+    ///
+    /// - `powerState.systemPowerInWatts` / `perPortWatts`: always nil for the
+    ///   same reason. The battery percent, isCharging, adapterWatts, and
+    ///   isDesktopMac are all available from the live read and are populated.
+    ///
+    /// - `chargerWatts`: resolved from USB-PD sources in the snapshot, with
+    ///   the same ChargerWattageSource logic the app uses. May differ from the
+    ///   cached value if the adapter reading changed between runs.
+    ///
+    /// - `displayMode` / `monitorName` / `displayCount`: read from
+    ///   `CableSnapshot.displayPorts` via DisplayDiagnostic, the same path the
+    ///   CLI's JSON output uses.
+    public init(from cable: CableSnapshot) {
+        let batteryFullyCharged = cable.batteryFullyCharged
+        let batteryIsCharging = cable.batteryIsCharging
+        let adapter = cable.adapter
+        let activePortCount = cable.ports.filter { $0.connectionActive == true }.count
+
+        let entries: [PortEntry] = cable.ports.map { port in
+            let devices = port.matchingDevices(from: cable.usbDevices)
+            let sources = cable.powerSources.filter { $0.canonicallyMatches(port: port) }
+            let identities = cable.identities.filter { $0.canonicallyMatches(port: port) }
+
+            let isLive = isPortLive(
+                port: port,
+                powerSources: sources,
+                identities: identities,
+                matchingDevices: devices
+            )
+
+            let usb3 = cable.usb3Transports.filter { $0.canonicallyMatches(port: port) }
+            let cio = cable.cioCapabilities.first { $0.canonicallyMatches(port: port) }
+
+            let summary = PortSummary(
+                port: port,
+                sources: sources,
+                identities: identities,
+                devices: devices,
+                thunderboltSwitches: cable.thunderboltSwitches,
+                usb3Transports: usb3,
+                cioCapability: cio,
+                isConnectedOverride: isLive,
+                batteryFullyCharged: batteryFullyCharged,
+                batteryIsCharging: batteryIsCharging
+            )
+
+            let status = Status(from: summary.status)
+
+            let wattageSource = ChargerWattageSource.resolve(
+                portSources: sources,
+                activePortCount: activePortCount,
+                adapter: adapter
+            )
+
+            // Display detail from the live DisplayPort transport list.
+            // Only populated when a display is connected; `portKey != nil` guard
+            // prevents a keyless port from borrowing a keyless display entry.
+            var displayMode: String?
+            var monitorName: String?
+            var displayCount = 0
+            if port.portKey != nil {
+                let diags = cable.displayPorts
+                    .filter { $0.canonicallyMatches(port: port) }
+                    .compactMap { DisplayDiagnostic(dp: $0, cable: nil) }
+                displayCount = diags.count
+                if let first = diags.first {
+                    displayMode = first.facts.currentMode?.shortLabel
+                    monitorName = first.facts.monitorName
+                }
+            }
+
+            return PortEntry(
+                id: port.id,
+                portName: port.portDescription ?? port.serviceName,
+                status: status,
+                headline: summary.headline,
+                subtitle: summary.subtitle,
+                topBullet: summary.bullets.first,
+                iconName: status.iconName,
+                deviceCount: devices.count,
+                // recentPower is always empty here: power history comes from
+                // the app's Pro plugin contributors and is not in CableSnapshot.
+                // The widget will show the sparkline when the app has written it
+                // to the App Group cache; the live-read path leaves it blank.
+                recentPower: [],
+                portKey: port.portKey,
+                chargerWatts: wattageSource.watts,
+                linkSpeed: summary.linkSpeed,
+                displayMode: displayMode,
+                monitorName: monitorName,
+                displayCount: displayCount
+            )
+        }
+
+        // Build PowerState from what is available in the live snapshot.
+        // systemPowerInWatts and perPortWatts are nil: they require the Pro
+        // plugin's accumulation loop, which only runs in the main app process.
+        let battery = cable.batteryFullyCharged != nil || cable.batteryIsCharging != nil
+        let powerState = WidgetSnapshot.PowerState(
+            batteryPercent: nil, // not in CableSnapshot; battery % is in SmartBattery reader
+            isCharging: cable.batteryIsCharging ?? false,
+            fullyCharged: cable.batteryFullyCharged ?? false,
+            isDesktopMac: cable.isDesktopMac,
+            adapterWatts: adapter?.watts,
+            adapterDescription: adapter?.adapterDescription,
+            systemPowerInWatts: nil,
+            perPortWatts: nil,
+            recentSystemPower: []
+        )
+
+        self.init(
+            ports: entries,
+            timestamp: Date(),
+            powerState: battery ? powerState : nil
+        )
+    }
+}
+
 // MARK: - Convenience builders
 
 extension WidgetSnapshot.Status {
