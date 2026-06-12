@@ -86,8 +86,7 @@ Requires macOS 14 (Sonoma) or later, Apple Silicon only. On Intel Macs, the USB-
 ### Homebrew
 
 ```bash
-brew tap darrylmorley/whatcable
-brew install --cask whatcable
+brew install --cask darrylmorley/whatcable/whatcable
 ```
 
 This installs the menu bar app and symlinks the `whatcable` CLI into your PATH.
@@ -97,11 +96,12 @@ This installs the menu bar app and symlinks the `whatcable` CLI into your PATH.
 If you don't want the menu bar app, install just the command-line tool:
 
 ```bash
-brew tap darrylmorley/whatcable
-brew install whatcable-cli
+brew install darrylmorley/whatcable/whatcable-cli
 ```
 
 Same signed and notarised binary, packaged on its own. Useful in terminal-only or scripting environments. Pick one of the two Homebrew installs (both ship the same `whatcable` binary).
+
+Homebrew 6 may warn about untrusted third-party taps on first install. If an existing install starts complaining about an untrusted tap, run `brew trust darrylmorley/whatcable` or see https://docs.brew.sh/Tap-Trust for details.
 
 ## Command-line interface
 

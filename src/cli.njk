@@ -63,15 +63,15 @@ extraHead: |
 
 <h3>Homebrew (recommended)</h3>
 <p>The cask installs the menu bar app and puts the <code>whatcable</code> CLI on your PATH automatically.</p>
-<pre><code><span class="prompt">$</span> brew tap darrylmorley/whatcable
-<span class="prompt">$</span> brew install --cask whatcable</code></pre>
+<pre><code><span class="prompt">$</span> brew install --cask darrylmorley/whatcable/whatcable</code></pre>
 <p>After this, <code>whatcable</code> just works from any new terminal window.</p>
 
 <h3>Homebrew, CLI only (no menu bar app)</h3>
 <p>If you don't want the menu bar app, install just the command-line tool:</p>
-<pre><code><span class="prompt">$</span> brew tap darrylmorley/whatcable
-<span class="prompt">$</span> brew install whatcable-cli</code></pre>
+<pre><code><span class="prompt">$</span> brew install darrylmorley/whatcable/whatcable-cli</code></pre>
 <p>Same signed and notarised binary as the one inside the .app, packaged on its own. Useful for scripting environments or terminal-only setups. Pick one of these two installs (both can coexist, but they ship the same <code>whatcable</code> binary).</p>
+
+<p>Homebrew 6 may warn about untrusted third-party taps on first install. If an existing install starts complaining about an untrusted tap, run <code>brew trust darrylmorley/whatcable</code> or see <a href="https://docs.brew.sh/Tap-Trust">docs.brew.sh/Tap-Trust</a> for details.</p>
 
 <h3>Downloaded the .zip from GitHub?</h3>
 <p>The CLI is bundled inside the app, at:</p>
