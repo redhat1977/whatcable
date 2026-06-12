@@ -142,11 +142,80 @@ extraHead: |
     }
     .pro-page .section-head p { color: var(--ink-soft); font-size: 17px; }
 
-    .pro-page .showcase {
-      padding: 64px 0 80px;
-      background: var(--panel);
+    /* Personas */
+    .pro-page .personas {
       border-bottom: 1px solid var(--line);
     }
+    .pro-page .personas-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .pro-page .persona-card {
+      padding: 32px 28px;
+      border-radius: 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+    .pro-page .persona-card .persona-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 10px;
+    }
+    .pro-page .persona-card p {
+      font-size: 15px;
+      color: var(--ink-soft);
+      line-height: 1.6;
+    }
+
+    /* Story features */
+    .pro-page .story-features {
+      background: var(--panel);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .pro-page .story-feature {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 56px;
+      align-items: center;
+      padding: 56px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .pro-page .story-feature:last-child { border-bottom: none; }
+    .pro-page .story-feature.reverse { direction: rtl; }
+    .pro-page .story-feature.reverse > * { direction: ltr; }
+    .pro-page .story-feature-text {}
+    .pro-page .story-feature-setup {
+      font-size: clamp(20px, 2vw, 26px);
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.25;
+      margin-bottom: 20px;
+      letter-spacing: -0.01em;
+    }
+    .pro-page .story-feature-img img {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-md);
+    }
+    .pro-page .story-feature-name {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .pro-page .story-feature-explainer {
+      font-size: 16px;
+      color: var(--ink-soft);
+      line-height: 1.6;
+    }
+
+    /* Reviews */
     .pro-page .quotes-strip .quotes-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -174,36 +243,45 @@ extraHead: |
       color: var(--muted);
       font-weight: 500;
     }
-    @media (max-width: 880px) {
-      .pro-page .quotes-strip .quotes-grid { grid-template-columns: 1fr; }
-    }
-
-    .pro-page .showcase .section-head { text-align: center; margin: 0 auto 48px; }
-    .pro-page .showcase-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      align-items: start;
-    }
-    .pro-page .showcase-item { text-align: center; }
-    .pro-page .showcase-item img {
-      width: 100%;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      box-shadow: var(--shadow-md);
-      transition: transform 0.2s ease;
-    }
-    .pro-page .showcase-item img:hover { transform: scale(1.02); }
-    .pro-page .showcase-item .caption {
-      margin-top: 14px;
+    .pro-page .quotes-subhead {
       font-size: 14px;
       font-weight: 600;
       color: var(--ink-soft);
+      letter-spacing: 0.02em;
+      margin-bottom: 20px;
+      margin-top: 40px;
     }
-    .pro-page .showcase-item .caption-detail {
+    @media (max-width: 880px) {
+      .pro-page .quotes-strip .quotes-grid { grid-template-columns: 1fr; }
+      .pro-page .personas-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Smaller screenshot gallery */
+    .pro-page .gallery {
+      padding: 48px 0 0;
+    }
+    .pro-page .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+    .pro-page .gallery-item { text-align: center; }
+    .pro-page .gallery-item img {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-md);
+    }
+    .pro-page .gallery-item .caption {
+      margin-top: 10px;
       font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-soft);
+    }
+    .pro-page .gallery-item .caption-detail {
+      font-size: 12px;
       color: var(--muted);
-      margin-top: 4px;
+      margin-top: 3px;
     }
 
     .pro-page .features {
@@ -395,7 +473,9 @@ extraHead: |
       .pro-page .hero-grid { grid-template-columns: 1fr; gap: 40px; }
       .pro-page .hero-img { max-width: 480px; }
       .pro-page .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .pro-page .showcase-grid { grid-template-columns: repeat(2, 1fr); }
+      .pro-page .story-feature { grid-template-columns: 1fr; gap: 32px; }
+      .pro-page .story-feature.reverse { direction: ltr; }
+      .pro-page .gallery-grid { grid-template-columns: 1fr; max-width: 380px; }
     }
     @media (max-width: 600px) {
       .pro-page .hero h1 { font-size: 28px; }
@@ -403,7 +483,6 @@ extraHead: |
       .pro-page .hero-actions { flex-direction: column; }
       .pro-page .hero-actions .button { width: 100%; }
       .pro-page .feature-grid { grid-template-columns: 1fr; }
-      .pro-page .showcase-grid { grid-template-columns: 1fr; max-width: 380px; margin: 0 auto; }
       .pro-page .compare-table th, .pro-page .compare-table td { padding: 12px 14px; font-size: 13.5px; }
       .pro-page .pricing-card { padding: 28px 24px; }
       .pro-page .cta h2 { font-size: 24px; }
@@ -412,6 +491,7 @@ extraHead: |
 ---
 <div class="pro-page">
 
+<!-- 1. HERO -->
 <section class="hero">
   <div class="wrap-wide hero-grid">
     <div>
@@ -419,8 +499,8 @@ extraHead: |
         <span class="dot-accent"></span>
         WhatCable Pro
       </div>
-      <h1>Go deeper into every<br><span class="accent">USB-C port and cable</span></h1>
-      <p class="lede">The free app tells you what your cable can do. Pro shows you what's bottlenecking it: power, data, and display, side by side. Negotiation Diagnostics breaks down every link by Mac port, cable, and device with the weak link highlighted, Display Diagnostics shows whether the link is carrying your monitor's full resolution and refresh, plus live power metering, PD contract inspection, and signal-level diagnostics straight from IOKit.</p>
+      <h1>The monitor's stuck at 30Hz. The dock's charging at half speed. Pro tells you <span class="accent">which part is lying.</span></h1>
+      <p class="lede">Somewhere in the chain (port, cable, adapter, device) one link is underperforming. Pro reads the actual negotiation straight from macOS and points at the weak one. No estimates, no guesswork.</p>
       <div class="hero-actions">
         <button class="button accent lg" id="buy-hero">Buy Pro - £9.99</button>
         <a href="#features" class="button secondary lg">See what's included</a>
@@ -433,39 +513,72 @@ extraHead: |
   </div>
 </section>
 
-<section class="showcase">
+<!-- 2. WHO NEEDS PRO -->
+<section class="personas">
   <div class="wrap-wide">
     <div class="section-head">
-      <span class="section-tag">See it in action</span>
-      <h2>Real data from real ports</h2>
-      <p>Every reading comes straight from IOKit. No estimates, no guesswork.</p>
+      <span class="section-tag">Who needs Pro</span>
+      <h2>Who needs Pro</h2>
     </div>
-    <div class="showcase-grid">
-      <div class="showcase-item">
-        <img src="/screenshot-negotiation-diagnostics.webp" alt="Negotiation Diagnostics screen showing per-port power and data-speed breakdowns with the bottleneck highlighted" loading="lazy">
-        <div class="caption">Negotiation Diagnostics</div>
-        <div class="caption-detail">Per-port breakdown of what each link supports, with the weak link highlighted</div>
+    <div class="personas-grid">
+      <div class="persona-card">
+        <div class="persona-title">The two-dock developer.</div>
+        <p>One dock at work, one at home, same laptop, different behaviour. Pro shows what each dock actually negotiated, so you stop blaming the Mac.</p>
       </div>
-      <div class="showcase-item">
-        <img src="/screenshot-display-diagnostics.webp" alt="Display Diagnostics screen showing a monitor's top mode against what the DisplayPort link is carrying, with the adapter named and the shortfall highlighted" loading="lazy">
-        <div class="caption">Display Diagnostics</div>
-        <div class="caption-detail">What your monitor can do vs what the link is carrying, with the limit named</div>
+      <div class="persona-card">
+        <div class="persona-title">The £300 dock owner.</div>
+        <p>The box said Thunderbolt 4 and 100W. Pro shows whether you're getting it, and names the part short-changing you if not.</p>
       </div>
-      <div class="showcase-item">
-        <img src="/screenshot-diagnostics.webp" alt="Pro diagnostics screen showing port health counters, liquid detection status, and the negotiated power contract for one port" loading="lazy">
-        <div class="caption">Port Diagnostics</div>
-        <div class="caption-detail">Pin diagram, port health, PD contract, event trace</div>
-      </div>
-      <div class="showcase-item">
-        <img src="/screenshot-dp-altmode.webp" alt="Pro diagnostics screen for a USB-C port driving a display, showing the device identity and a pin diagram with the DP four-lane routing" loading="lazy">
-        <div class="caption">Display Detection</div>
-        <div class="caption-detail">DP lane mapping, expandable device detail, signal routing</div>
+      <div class="persona-card">
+        <div class="persona-title">The person everyone asks.</div>
+        <p>A colleague's SSD keeps dropping mid-copy and it's your problem now. Port health counters, event traces, and live power beat guessing.</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="quotes-strip" aria-label="What reviewers said">
+<!-- 3. THREE FEATURES, STORY-FIRST -->
+<section class="story-features">
+  <div class="wrap-wide">
+
+    <div class="story-feature">
+      <div class="story-feature-text">
+        <div class="story-feature-name">Negotiation Diagnostics</div>
+        <p class="story-feature-setup">You bought a 40Gbps cable and the drive runs at 5.</p>
+        <p class="story-feature-explainer">Port, cable, and device side by side against what was actually negotiated, weak link highlighted.</p>
+      </div>
+      <div class="story-feature-img">
+        <img src="/screenshot-negotiation-diagnostics.webp" alt="Negotiation Diagnostics screen showing per-port power and data-speed breakdowns with the bottleneck highlighted" loading="lazy">
+      </div>
+    </div>
+
+    <div class="story-feature reverse">
+      <div class="story-feature-text">
+        <div class="story-feature-name">Display Diagnostics</div>
+        <p class="story-feature-setup">The new 4K display is running at 30Hz and macOS won't say why.</p>
+        <p class="story-feature-explainer">Your monitor's capability vs what the link is carrying, adapter named. It only says "not the cable" when the evidence shows it.</p>
+      </div>
+      <div class="story-feature-img">
+        <img src="/screenshot-display-diagnostics.webp" alt="Display Diagnostics screen showing a monitor's top mode against what the DisplayPort link is carrying, with the adapter named and the shortfall highlighted" loading="lazy">
+      </div>
+    </div>
+
+    <div class="story-feature">
+      <div class="story-feature-text">
+        <div class="story-feature-name">Live Power Metering</div>
+        <p class="story-feature-setup">The 100W charger that feels slow.</p>
+        <p class="story-feature-explainer">Real watts, amps, and volts per port, updated every 2 seconds.</p>
+      </div>
+      <div class="story-feature-img">
+        <img src="/screenshot-power-monitor.webp" alt="WhatCable Pro Power Monitor window showing USB-C port 1 drawing 5.9W on a live chart, with the System Power Input panel below" loading="lazy">
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- 4. REVIEWS -->
+<section class="quotes-strip" aria-label="What reviewers and users said">
   <div class="wrap-wide">
     <div class="section-head">
       <span class="section-tag">Reviews</span>
@@ -485,14 +598,55 @@ extraHead: |
         <figcaption class="attribution">Brady Snyder, MakeUseOf</figcaption>
       </figure>
     </div>
+
+    <p class="quotes-subhead">From Pro users</p>
+    <div class="quotes-grid">
+      <figure class="pull-quote">
+        <blockquote class="quote">Clear explanation, no corporate nonsense, and then a new version shipped almost immediately. That is honestly impressive.</blockquote>
+        <figcaption class="attribution">Michal, Creative Producer at ITHEDESIGN</figcaption>
+      </figure>
+      <figure class="pull-quote">
+        <blockquote class="quote">The app is so good, love it.</blockquote>
+        <figcaption class="attribution">Niko Hocke, NIYU</figcaption>
+      </figure>
+      <figure class="pull-quote">
+        <blockquote class="quote">Great software. Great support.</blockquote>
+        <figcaption class="attribution">Alex, Designcooperative Nittenau eG</figcaption>
+      </figure>
+    </div>
   </div>
 </section>
 
+<!-- 5. PRICING -->
+<section class="pricing" id="pricing">
+  <div class="wrap-wide">
+    <div class="section-head">
+      <span class="section-tag">Pricing</span>
+      <h2>Simple, one-time pricing</h2>
+      <p>No subscription. Pay once, use it forever. Free updates while Pro is in active development.</p>
+    </div>
+    <div class="pricing-card">
+      <div class="plan-name">WhatCable Pro</div>
+      <div class="price"><sup>£</sup>9.99</div>
+      <div class="price-note">One-time payment, no subscription</div>
+      <ul class="perks">
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Every Pro feature unlocked immediately</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Works on up to 2 Macs with one key</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Licence key delivered by email instantly</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>30-day offline grace period, no internet needed day to day</li>
+        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>macOS 14 Sonoma or later, Apple Silicon</li>
+      </ul>
+      <button class="button accent" style="width: 100%; font-size: 16px; min-height: 52px; border-radius: 10px;" id="buy-pricing">Buy Pro - £9.99</button>
+    </div>
+  </div>
+</section>
+
+<!-- 6. FULL FEATURE TABLE (moved lower) -->
 <section class="features" id="features">
   <div class="wrap-wide">
     <div class="section-head">
       <span class="section-tag">Pro features</span>
-      <h2>What Pro unlocks</h2>
+      <h2>For the convinced: everything Pro unlocks</h2>
       <p>Everything in the free app, plus deep diagnostics that read directly from IOKit, no extra software, no root access needed.</p>
     </div>
     <div class="feature-grid">
@@ -568,9 +722,26 @@ extraHead: |
       </div>
       <div class="feature feature--filler" aria-hidden="true"></div>
     </div>
+
+    <!-- Smaller gallery of remaining screenshots -->
+    <div class="gallery">
+      <div class="gallery-grid">
+        <div class="gallery-item">
+          <img src="/screenshot-diagnostics.webp" alt="Pro diagnostics screen showing port health counters, liquid detection status, and the negotiated power contract for one port" loading="lazy">
+          <div class="caption">Port Diagnostics</div>
+          <div class="caption-detail">Pin diagram, port health, PD contract, event trace</div>
+        </div>
+        <div class="gallery-item">
+          <img src="/screenshot-dp-altmode.webp" alt="Pro diagnostics screen for a USB-C port driving a display, showing the device identity and a pin diagram with the DP four-lane routing" loading="lazy">
+          <div class="caption">Display Detection</div>
+          <div class="caption-detail">DP lane mapping, expandable device detail, signal routing</div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
+<!-- Free vs Pro comparison table -->
 <section class="compare">
   <div class="wrap-wide">
     <div class="section-head">
@@ -619,29 +790,7 @@ extraHead: |
   </div>
 </section>
 
-<section class="pricing" id="pricing">
-  <div class="wrap-wide">
-    <div class="section-head">
-      <span class="section-tag">Pricing</span>
-      <h2>Simple, one-time pricing</h2>
-      <p>No subscription. Pay once, use it forever. Free updates while Pro is in active development.</p>
-    </div>
-    <div class="pricing-card">
-      <div class="plan-name">WhatCable Pro</div>
-      <div class="price"><sup>£</sup>9.99</div>
-      <div class="price-note">One-time payment, no subscription</div>
-      <ul class="perks">
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>All 14 pro features unlocked immediately</li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Works on up to 2 Macs with one key</li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Licence key delivered by email instantly</li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>30-day offline grace period, no internet needed day to day</li>
-        <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>macOS 14 Sonoma or later, Apple Silicon</li>
-      </ul>
-      <button class="button accent" style="width: 100%; font-size: 16px; min-height: 52px; border-radius: 10px;" id="buy-pricing">Buy Pro - £9.99</button>
-    </div>
-  </div>
-</section>
-
+<!-- 7. FAQ -->
 <section class="faq-section">
   <div class="wrap-wide">
     <div class="section-head">
