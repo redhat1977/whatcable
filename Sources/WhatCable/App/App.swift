@@ -88,6 +88,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     /// we can skip the expensive layout pass when the value hasn't changed.
     private var lastShownWatts: Int? = nil
 
+    /// Steady 1 Hz tick that re-evaluates the menu bar watts label. The
+    /// `$sources` subscription only repaints when the set of power-source
+    /// nodes changes, but the displayed value is read separately from
+    /// `AppleSmartBattery`, whose `ExternalConnected` flag can settle a beat
+    /// after a charger node disappears. When the battery is the last to
+    /// update, nothing re-triggers a repaint and the label keeps a stale
+    /// charging figure on battery. This timer guarantees the label re-reads
+    /// and clears. It's cheap: `updateMenuBarWatts()` skips the IOKit read
+    /// when the toggle is off and bails before any UI work when the value
+    /// hasn't changed.
+    private var wattsTimer: Timer?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         log.notice("launch: version=\(AppInfo.version, privacy: .public) macOS=\(ProcessInfo.processInfo.operatingSystemVersionString, privacy: .public)")
         registerWidgetExtension()
@@ -298,6 +310,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         }
         // Apply the initial watts label if the toggle is already on.
         updateMenuBarWatts()
+
+        // Re-evaluate the label on a steady 1 Hz tick so it clears on unplug
+        // even when no power-source node change fires the `$sources` sink.
+        // Guard against duplicates: applyDisplayMode can re-enter this after a
+        // teardown when the user flips the display mode.
+        guard wattsTimer == nil else { return }
+        wattsTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.updateMenuBarWatts() }
+        }
     }
 
     /// Set the status-item glyph, falling back to a short text label if the
@@ -445,6 +466,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     }
 
     private func tearDownMenuBarMode() {
+        wattsTimer?.invalidate()
+        wattsTimer = nil
         if let popover, popover.isShown { popover.performClose(nil) }
         popover = nil
         if let statusItem {
