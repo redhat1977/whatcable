@@ -155,6 +155,29 @@ public final class SMCPowerReader {
         )
     }
 
+    /// Live battery discharge power in milliwatts, read from the SMC battery
+    /// rail (`PPBR`). Opens lazily. Returns `nil` when the SMC can't be opened,
+    /// the key is absent (a desktop has no battery rail), or the value is
+    /// implausible.
+    ///
+    /// Why this exists: on Apple Silicon, `AppleSmartBattery`'s `BatteryPower` /
+    /// `SystemLoad` do not update under load (the fuel gauge holds a value for
+    /// tens of seconds), so a battery-discharge figure read from there sits
+    /// stale. `PPBR` is the live battery rail (updates ~1 Hz, tracks load);
+    /// confirmed on M5 Pro and present on every Apple Silicon laptop generation
+    /// in the probe corpus. Callers prefer this on battery and fall back to the
+    /// gauge when it returns `nil`.
+    public func readBatteryPowerMW() -> Int? {
+        guard open() else { return nil }
+        guard let watts = readFloat("PPBR") else { return nil }
+        // Guard against an absent/garbage key: real discharge is a few watts to
+        // tens of watts (the highest Apple Silicon MacBook draws well under 100 W
+        // sustained, so 200 W is a safe ceiling). Anything negative or above it
+        // means the wrong key on this silicon; fall back to the gauge.
+        guard watts >= 0, watts < 200 else { return nil }
+        return Int((Double(watts) * 1000).rounded())
+    }
+
     // MARK: - Key reads
 
     /// `flt` keys (`DxJV`, `DxJI`): a 4-byte IEEE float in native (little-

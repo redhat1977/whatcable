@@ -100,6 +100,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     /// hasn't changed.
     private var wattsTimer: Timer?
 
+    /// Reads the live SMC DC-in rail for the menu bar charger wattage. Held once
+    /// and reused (its `open()` is lazy and idempotent) so the 1 Hz watts timer
+    /// doesn't churn the AppleSMC user client. See `currentChargingWatts()`.
+    private let smcReader = SMCPowerReader()
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         log.notice("launch: version=\(AppInfo.version, privacy: .public) macOS=\(ProcessInfo.processInfo.operatingSystemVersionString, privacy: .public)")
         registerWidgetExtension()
@@ -438,11 +443,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     }
 
     /// Returns the rounded charger-in watts to display, or 0 when on battery /
-    /// unavailable. Reads `PowerTelemetryData.SystemPowerIn` (live measured, in
-    /// milliwatts) from `AppleSmartBattery` via the free-tier static method in
-    /// `PowerTelemetryWatcher`. Falls back to the adapter's negotiated wattage
-    /// when the live reading is absent (e.g. desktop Mac without a battery node,
-    /// or first-tick before telemetry data populates). Returns 0 on battery.
+    /// unavailable. Prefers the live SMC DC-in rail (`PDTR`), which tracks the
+    /// charger's real delivery ~1 Hz; falls back to `AppleSmartBattery`'s coarse
+    /// `PowerTelemetryData.SystemPowerIn`, then to the adapter's negotiated
+    /// wattage, when the SMC rail is unreadable. Returns 0 on battery.
     private func currentChargingWatts() -> Int {
         let dict = PowerTelemetryWatcher.appleSmartBatteryProperties()
 
@@ -450,7 +454,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         let externalConnected = dict.map { ($0["ExternalConnected"] as? Bool) ?? true } ?? true
         guard externalConnected else { return 0 }
 
-        // Try live measured system power (milliwatts -> watts, rounded).
+        // Prefer the live SMC DC-in rail (PDTR). AppleSmartBattery's
+        // PowerTelemetryData.SystemPowerIn below does not update under load on
+        // Apple Silicon (it sits stale), so the menu bar figure would lag the
+        // charger's real delivery; the SMC rail tracks it live (~1 Hz).
+        if let watts = smcReader.readSystemPowerInput()?.watts, watts > 0 {
+            return Int(watts.rounded())
+        }
+
+        // Fallback: the AppleSmartBattery gauge (coarse, but better than nothing
+        // where the SMC rail is unreadable, e.g. the App Store sandbox).
         if let telemetry = (dict?["PowerTelemetryData"] as? [String: Any]),
            let rawPowerIn = telemetry["SystemPowerIn"] as? Int,
            rawPowerIn > 0 {

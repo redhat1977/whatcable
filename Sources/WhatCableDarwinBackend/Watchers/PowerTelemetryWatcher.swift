@@ -118,6 +118,24 @@ public final class PowerTelemetryWatcher: ObservableObject {
         }
 
         let batteryInstalled = wcBool(dict?["BatteryInstalled"])
+        // ExternalConnected: bound once here and reused below (the system-input
+        // override, the on-battery discharge gate, and the hasContract gate).
+        // Defaults true so a desktop, which has no battery node, reads as plugged
+        // in.
+        let externalConnected = dict.map { wcBool($0["ExternalConnected"]) } ?? true
+
+        // System power input (the charger / PSU feeding the logic board). The
+        // telemetry SystemPowerIn built above comes from AppleSmartBattery, which
+        // does not update under load on Apple Silicon (it sits stale). The SMC
+        // DC-in rail (VD0R / ID0R / PDTR) is live (~1 Hz), so override with it
+        // whenever externally powered: a desktop always is; a plugged-in laptop
+        // too. On battery there is no input to show (the discharge figure below
+        // drives the card instead). This also fixes the desktop input card, which
+        // used to stay 0 and spin on "Negotiating…" forever (#291).
+        if externalConnected, let input = smcReader.readSystemPowerInput() {
+            system = Self.smcSystemSample(input, timestamp: timestamp)
+        }
+
         // Desktop path: with no battery controller the IOKit per-port paths
         // above are empty, so read the per-port power-OUT figures from the SMC
         // and tie each channel to its physical port by controller UUID (M3+).
@@ -126,15 +144,6 @@ public final class PowerTelemetryWatcher: ObservableObject {
         // skips this entirely: we never guess a positional mapping.
         var perPortMeteringSupported = false
         if !batteryInstalled {
-            // System Power Input: a desktop has no battery telemetry, so read the
-            // DC-in rail (the internal PSU feeding the logic board) from the SMC.
-            // Read independent of the per-port UUID map so an M1/M2 Mac mini,
-            // where per-port metering is unavailable, still gets a working input
-            // card. Without this the input stayed 0 and the window spun on
-            // "Negotiating…" forever (#291).
-            if let input = smcReader.readSystemPowerInput() {
-                system = Self.smcSystemSample(input, timestamp: timestamp)
-            }
             // The cache only ever holds a non-empty map (see start()), so a nil
             // cache means "not looked up yet, or last lookup was empty": re-fetch
             // and cache a non-empty result. On M1/M2 (no UUID) this stays empty
@@ -172,26 +181,34 @@ public final class PowerTelemetryWatcher: ObservableObject {
 
         accumulator.append(portSamples: portSamples)
         // Battery discharge, so the System Power card keeps tracking on battery.
-        // Voltage is the pack voltage; power prefers the reported BatteryPower,
-        // falling back to SystemLoad (the system's draw).
+        // Voltage is the pack voltage.
         let batteryVoltageMV = wcInt(dict?["Voltage"])
         let reportedBatteryPower = abs(wcInt(telemetry["BatteryPower"]))
-        let batteryPowerMW = reportedBatteryPower != 0 ? reportedBatteryPower : wcInt(telemetry["SystemLoad"])
+        let gaugeBatteryPower = reportedBatteryPower != 0 ? reportedBatteryPower : wcInt(telemetry["SystemLoad"])
+        // AppleSmartBattery's BatteryPower / SystemLoad do not update under load
+        // on Apple Silicon (the fuel gauge holds a value for tens of seconds), so
+        // a discharge figure read from there sits stale. The SMC battery rail
+        // (PPBR) is live (updates ~1 Hz, tracks load), so prefer it when on
+        // battery; fall back to the gauge when the SMC is unavailable or the key
+        // is absent. `open()` inside the reader is lazy and idempotent.
+        let onBattery = batteryInstalled && !externalConnected
+        let liveBatteryPower = onBattery ? smcReader.readBatteryPowerMW() : nil
+        let batteryPowerMW = liveBatteryPower ?? gaugeBatteryPower
         // Pack current. Apple Silicon usually reports 0 for Amperage /
-        // InstantAmperage, so when those are blank derive it from the measured
-        // power and voltage: P = V x I, hence I[mA] = P[mW] x 1000 / V[mV].
-        // Exact, not a guess, and consistent with the displayed P and V.
+        // InstantAmperage, and when we are on the live SMC power the gauge current
+        // would be stale anyway, so derive current from the (live) power and pack
+        // voltage: P = V x I, hence I[mA] = P[mW] x 1000 / V[mV]. Exact, and
+        // consistent with the displayed P and V. Only when falling back to the
+        // gauge do we use a non-zero measured current if the gauge reports one.
         let instant = wcInt(dict?["InstantAmperage"])
         let measuredCurrent = abs(instant != 0 ? instant : wcInt(dict?["Amperage"]))
-        let batteryCurrentMA = measuredCurrent != 0
+        let derivedCurrent = batteryVoltageMV > 0 ? batteryPowerMW * 1000 / batteryVoltageMV : 0
+        let batteryCurrentMA = (liveBatteryPower == nil && measuredCurrent != 0)
             ? measuredCurrent
-            : (batteryVoltageMV > 0 ? batteryPowerMW * 1000 / batteryVoltageMV : 0)
-        // A winning contract can linger for a moment after unplug on this
-        // stack, so gate hasContract on a live connection. A contract only
-        // means anything while a charger is actually plugged in. A desktop has
-        // no battery node to report ExternalConnected, so it defaults to true
-        // (a desktop is always externally powered).
-        let externalConnected = dict.map { wcBool($0["ExternalConnected"]) } ?? true
+            : derivedCurrent
+        // hasContract is gated on a live connection (externalConnected, bound
+        // above): a winning contract can linger for a moment after unplug on this
+        // stack, and only means anything while a charger is actually plugged in.
         let snapshot = PowerMonitorSnapshot(
             timestamp: timestamp,
             systemSample: system,
