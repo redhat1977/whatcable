@@ -111,6 +111,12 @@ hand-maintained markdown table; format may change once the consumer exists.
 | Acasis TB501Pro enclosure bundled cable | `0x315C` | `0x0000` | `0x00022643` | Chengdu Convenientpower Semiconductor Co., LTD | none | USB4 Gen 3 (40 Gbps, Thunderbolt 4 class) | 5 A / 50 V (240 W) | passive | [#307](https://github.com/darrylmorley/whatcable/issues/307) |
 | UGreen retractable 100W (L531), zeroed e-marker | `0x0000` | `0x0000` | `0x00082040` | (zeroed) | none | USB 2.0 (480 Mbps) | 5 A / 20 V (100 W) | passive | [#302](https://github.com/darrylmorley/whatcable/issues/302) |
 | Unbranded TB5-class 80 Gbps, zeroed e-marker | `0x0000` | `0x0000` | `0x000A4644` | (zeroed) | none | USB4 Gen 4（80 Gbps，Thunderbolt 5 级） | 5 A / 50 V (240 W) | passive | [#309](https://github.com/darrylmorley/whatcable/issues/309) |
+| CalDigit Thunderbolt 4 Pro Braided Cable (1 m) | `0x01B6` | `0x4001` | `0x110A2643` | Unregistered | `0x302F` | USB4 Gen 3 (40 Gbps, Thunderbolt 4 class) | 5 A / 50 V (240 W) | passive | [#329](https://github.com/darrylmorley/whatcable/issues/329) |
+| Apple Thunderbolt 3 cable (1 m) | `0x05AC` | `0x1782` | `0x11082052` | Apple | `0x2600` | USB 3.2 Gen 2 (10 Gbps) | 5 A / 20 V (100 W) | passive | [#332](https://github.com/darrylmorley/whatcable/issues/332) |
+| Apple Thunderbolt 4 Pro Cable (1.8 m) | `0x05AC` | `0x7205` | `0x4368F8DB` | Apple | none | USB4 Gen 3 (40 Gbps, Thunderbolt 4 class) | 5 A / 20 V (100 W) | active | [#333](https://github.com/darrylmorley/whatcable/issues/333) |
+| LG 27MD5KL bundled Thunderbolt 3 cable (Sumitomo silicon) | `0x20C2` | `0x0004` | `0x21085858` | Sumitomo Electric Ind., Ltd., Optical Comm. R&D Lab | none | USB 2.0 (480 Mbps) | 5 A / 20 V (100 W) | active | [#331](https://github.com/darrylmorley/whatcable/issues/331) |
+| LOGIIX Piston Connect USB-C cable (240W / 40 Gbps) | `0x315C` | `0x0000` | `0x000A2E43` | Chengdu Convenientpower Semiconductor Co., LTD | none | USB4 Gen 3 (40 Gbps, Thunderbolt 4 class) | 5 A / 50 V (240 W) | passive | [#328](https://github.com/darrylmorley/whatcable/issues/328) |
+| UGREEN 140 W charger bundled cable (VID/PID zeroed) | `0x0000` | `0x0000` | `0x000A4640` | (zeroed) | none | USB 2.0 (480 Mbps) | 5 A / 50 V (240 W) | passive | [#327](https://github.com/darrylmorley/whatcable/issues/327) |
 
 Sorted by VID. The zeroed-fingerprint entry is parked at the bottom because it
 is identity-less.

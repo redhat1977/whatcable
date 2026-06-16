@@ -13,6 +13,7 @@ final class AppSettings: ObservableObject {
 
     private enum Keys {
         static let notifyOnChanges = "notifyOnChanges"
+        static let notifyOnUpdates = "notifyOnUpdates"
         static let hideEmptyPorts = "hideEmptyPorts"
         static let useMenuBarMode = "useMenuBarMode"
         static let showTechnicalDetails = "showTechnicalDetails"
@@ -39,6 +40,19 @@ final class AppSettings: ObservableObject {
             if notifyOnChanges {
                 NotificationManager.shared.requestAuthorizationIfNeeded()
             }
+        }
+    }
+
+    /// Whether the "WhatCable X.Y available" update notification is posted.
+    /// Sits under `notifyOnChanges`: update notifications only fire when both
+    /// this and the master cable-changes toggle are on. Defaults true so
+    /// existing users who already get update notifications keep getting them;
+    /// turning it off silences only update alerts, leaving cable-change
+    /// notifications and the in-window update notice untouched.
+    @Published var notifyOnUpdates: Bool {
+        didSet {
+            guard notifyOnUpdates != oldValue else { return }
+            UserDefaults.standard.set(notifyOnUpdates, forKey: Keys.notifyOnUpdates)
         }
     }
 
@@ -158,6 +172,13 @@ final class AppSettings: ObservableObject {
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
         // Notifications default off — opt in to avoid noise.
         self.notifyOnChanges = UserDefaults.standard.bool(forKey: Keys.notifyOnChanges)
+        // Update notifications default on; absent key reads as on so existing
+        // users keep their current behaviour after upgrade.
+        if UserDefaults.standard.object(forKey: Keys.notifyOnUpdates) == nil {
+            self.notifyOnUpdates = true
+        } else {
+            self.notifyOnUpdates = UserDefaults.standard.bool(forKey: Keys.notifyOnUpdates)
+        }
         self.hideEmptyPorts = UserDefaults.standard.bool(forKey: Keys.hideEmptyPorts)
         // Menu bar mode is the default; UserDefaults returns false for unset
         // bool keys, so explicitly check presence.

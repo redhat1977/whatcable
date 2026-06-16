@@ -46,6 +46,7 @@
 "Nothing connected" = "Ничего не подключено";
 "Notifications" = "Уведомления";
 "Notify on cable changes" = "Уведомлять об изменениях кабеля";
+"Notify on app updates" = "Уведомлять об обновлениях приложения";
 "Open in GitHub" = "Открыть на GitHub";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "Открывает предзаполненный issue в браузере. Ничего не отправляется, пока вы не отправите форму там.";
 "Optical" = "Оптика";

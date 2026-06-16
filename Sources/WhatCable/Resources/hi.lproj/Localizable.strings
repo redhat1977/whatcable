@@ -46,6 +46,7 @@
 "Nothing connected" = "कुछ भी कनेक्ट नहीं";
 "Notifications" = "सूचनाएँ";
 "Notify on cable changes" = "केबल बदलने पर सूचित करें";
+"Notify on app updates" = "ऐप अपडेट पर सूचित करें";
 "Open in GitHub" = "GitHub में खोलें";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "आपके ब्राउज़र में पहले से भरा GitHub issue खोलता है। जब तक आप वहाँ सबमिट नहीं करते, कुछ भी नहीं भेजा जाता।";
 "Optical" = "ऑप्टिकल";

@@ -238,6 +238,20 @@
     "xid" : "none"
   },
   {
+    "brand" : "UGREEN 140 W charger bundled cable (VID\/PID zeroed)",
+    "cableVDO" : "0x000A4640",
+    "issueNum" : "#327",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/327",
+    "pid" : "0x0000",
+    "power" : "5 A \/ 50 V (240 W)",
+    "registered" : true,
+    "speed" : "USB 2.0 (480 Mbps)",
+    "type" : "passive",
+    "vendor" : "(zeroed)",
+    "vid" : "0x0000",
+    "xid" : "none"
+  },
+  {
     "brand" : "Aulumu M07 (VID\/PID zeroed)",
     "cableVDO" : "0x000A4642",
     "issueNum" : "#108",
@@ -364,6 +378,20 @@
     "xid" : "none"
   },
   {
+    "brand" : "CalDigit Thunderbolt 4 Pro Braided Cable (1 m)",
+    "cableVDO" : "0x110A2643",
+    "issueNum" : "#329",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/329",
+    "pid" : "0x4001",
+    "power" : "5 A \/ 50 V (240 W)",
+    "registered" : false,
+    "speed" : "USB4 Gen 3 (40 Gbps, Thunderbolt 4 class)",
+    "type" : "passive",
+    "vendor" : "Unregistered",
+    "vid" : "0x01B6",
+    "xid" : "0x302F"
+  },
+  {
     "brand" : "CalDigit TB5 Pro Cable 0.5 m, Apple Store",
     "cableVDO" : "0x110A2644",
     "issueNum" : "#209",
@@ -471,6 +499,34 @@
     "registered" : true,
     "speed" : "USB 3.2 Gen 2 (10 Gbps)",
     "type" : "passive",
+    "vendor" : "Apple",
+    "vid" : "0x05AC",
+    "xid" : "none"
+  },
+  {
+    "brand" : "Apple Thunderbolt 3 cable (1 m)",
+    "cableVDO" : "0x11082052",
+    "issueNum" : "#332",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/332",
+    "pid" : "0x1782",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB 3.2 Gen 2 (10 Gbps)",
+    "type" : "passive",
+    "vendor" : "Apple",
+    "vid" : "0x05AC",
+    "xid" : "0x2600"
+  },
+  {
+    "brand" : "Apple Thunderbolt 4 Pro Cable (1.8 m)",
+    "cableVDO" : "0x4368F8DB",
+    "issueNum" : "#333",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/333",
+    "pid" : "0x7205",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB4 Gen 3 (40 Gbps, Thunderbolt 4 class)",
+    "type" : "active",
     "vendor" : "Apple",
     "vid" : "0x05AC",
     "xid" : "none"
@@ -586,6 +642,20 @@
     "vendor" : "CE LINK LIMITED",
     "vid" : "0x2095",
     "xid" : "0x34F2"
+  },
+  {
+    "brand" : "LG 27MD5KL bundled Thunderbolt 3 cable (Sumitomo silicon)",
+    "cableVDO" : "0x21085858",
+    "issueNum" : "#331",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/331",
+    "pid" : "0x0004",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB 2.0 (480 Mbps)",
+    "type" : "active",
+    "vendor" : "Sumitomo Electric Ind., Ltd., Optical Comm. R&D Lab",
+    "vid" : "0x20C2",
+    "xid" : "none"
   },
   {
     "brand" : "delock TB3-branded cable",
@@ -916,6 +986,20 @@
     "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/234",
     "pid" : "0x0000",
     "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB4 Gen 3 (40 Gbps, Thunderbolt 4 class)",
+    "type" : "passive",
+    "vendor" : "Chengdu Convenientpower Semiconductor Co., LTD",
+    "vid" : "0x315C",
+    "xid" : "none"
+  },
+  {
+    "brand" : "LOGIIX Piston Connect USB-C cable (240W \/ 40 Gbps)",
+    "cableVDO" : "0x000A2E43",
+    "issueNum" : "#328",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/328",
+    "pid" : "0x0000",
+    "power" : "5 A \/ 50 V (240 W)",
     "registered" : true,
     "speed" : "USB4 Gen 3 (40 Gbps, Thunderbolt 4 class)",
     "type" : "passive",

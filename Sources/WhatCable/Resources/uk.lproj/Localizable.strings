@@ -46,6 +46,7 @@
 "Nothing connected" = "Нічого не підключено";
 "Notifications" = "Сповіщення";
 "Notify on cable changes" = "Сповіщати про зміни кабелю";
+"Notify on app updates" = "Сповіщати про оновлення застосунку";
 "Open in GitHub" = "Відкрити в GitHub";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "Відкриває попередньо заповнену задачу GitHub у браузері. Нічого не надсилається, доки ви не підтвердите там.";
 "Optical" = "Оптичний";

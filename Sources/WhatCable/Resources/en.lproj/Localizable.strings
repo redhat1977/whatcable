@@ -46,6 +46,7 @@
 "Nothing connected" = "Nothing connected";
 "Notifications" = "Notifications";
 "Notify on cable changes" = "Notify on cable changes";
+"Notify on app updates" = "Notify on app updates";
 "Open in GitHub" = "Open in GitHub";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there.";
 "Optical" = "Optical";

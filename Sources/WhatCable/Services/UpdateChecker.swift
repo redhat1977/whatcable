@@ -96,10 +96,7 @@ final class UpdateChecker: ObservableObject {
                 if Self.isNewer(remote: remote, current: AppInfo.version) {
                     let update = AvailableUpdate(version: remote, url: url, downloadURL: downloadURL, notes: notes)
                     self.available = update
-                    if self.notifiedVersion != remote {
-                        self.notifiedVersion = remote
-                        self.postNotification(update)
-                    }
+                    self.postNotification(update)
                     if visible {
                         // Manual "Check for Updates" click: surface a modal
                         // alert so the user gets the same feedback they get
@@ -121,7 +118,12 @@ final class UpdateChecker: ObservableObject {
     }
 
     private func postNotification(_ update: AvailableUpdate) {
-        guard AppSettings.shared.notifyOnChanges else { return }
+        guard AppSettings.shared.notifyOnChanges, AppSettings.shared.notifyOnUpdates else { return }
+        // Stamp only once we actually post, not when the version is first seen.
+        // Otherwise re-enabling either toggle after an update was already
+        // detected would find this version "already notified" and stay silent.
+        guard notifiedVersion != update.version else { return }
+        notifiedVersion = update.version
         let content = UNMutableNotificationContent()
         content.title = "WhatCable \(update.version) available"
         content.body = "You're on \(AppInfo.version). Click to view release notes."

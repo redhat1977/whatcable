@@ -48,6 +48,7 @@
 "Nothing connected" = "未連接任何裝置";
 "Notifications" = "通知";
 "Notify on cable changes" = "線材變更時通知";
+"Notify on app updates" = "App 更新時通知";
 "Open in GitHub" = "在 GitHub 中開啟";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "會在瀏覽器中開啟預先填寫好的 GitHub issue。在實際送出前不會傳送任何內容。";
 "Optical" = "光纖";

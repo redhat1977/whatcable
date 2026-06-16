@@ -46,6 +46,7 @@
 "Nothing connected" = "未接続";
 "Notifications" = "通知";
 "Notify on cable changes" = "ケーブル変更時に通知";
+"Notify on app updates" = "アプリ更新時に通知";
 "Open in GitHub" = "GitHubで開く";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "入力済みのGitHub issueをブラウザで開きます。送信するまで何も送られません。";
 "Optical" = "光学";

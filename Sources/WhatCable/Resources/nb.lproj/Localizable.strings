@@ -46,6 +46,7 @@
 "Nothing connected" = "Ingenting tilkoblet";
 "Notifications" = "Varsler";
 "Notify on cable changes" = "Varsle ved kabelendringer";
+"Notify on app updates" = "Varsle ved appoppdateringer";
 "Open in GitHub" = "Åpne i GitHub";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "Åpner et forhåndsutfylt GitHub-issue i nettleseren din. Ingenting sendes før du sender det inn der.";
 "Optical" = "Optisk";

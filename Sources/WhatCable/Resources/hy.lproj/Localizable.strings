@@ -46,6 +46,7 @@
 "Nothing connected" = "Ոչինչ միացված չէ";
 "Notifications" = "Ծանուցումներ";
 "Notify on cable changes" = "Ծանուցել կաբելի փոփոխությունների մասին";
+"Notify on app updates" = "Ծանուցել հավելվածի թարմացումների մասին";
 "Open in GitHub" = "Բացել GitHub-ում";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "Ձեր բրաուզերում կբացվի նախապես լրացված GitHub issue: Ոչինչ չի ուղարկվի, մինչև դուք չհաստատեք այնտեղ:";
 "Optical" = "Օպտիկական";

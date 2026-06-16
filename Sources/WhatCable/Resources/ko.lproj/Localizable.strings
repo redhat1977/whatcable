@@ -46,6 +46,7 @@
 "Nothing connected" = "연결되지 않음";
 "Notifications" = "알림";
 "Notify on cable changes" = "케이블 변경 시 알림";
+"Notify on app updates" = "앱 업데이트 시 알림";
 "Open in GitHub" = "GitHub에서 열기";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "미리 작성된 GitHub 이슈를 브라우저에서 열어요. GitHub에서 제출하기 전까지는 아무것도 전송되지 않아요.";
 "Optical" = "광 케이블";

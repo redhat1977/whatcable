@@ -46,6 +46,7 @@
 "Nothing connected" = "Hiçbir şey bağlı değil";
 "Notifications" = "Bildirimler";
 "Notify on cable changes" = "Kablo değişikliklerinde bildir";
+"Notify on app updates" = "Uygulama güncellemelerinde bildir";
 "Open in GitHub" = "GitHub'da aç";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "Tarayıcınızda önceden doldurulmuş bir GitHub sorunu açar. Orada göndermeden önce hiçbir şey iletilmez.";
 "Optical" = "Optik";

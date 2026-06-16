@@ -46,6 +46,7 @@
 "Nothing connected" = "Nekas nav pievienots";
 "Notifications" = "Paziņojumi";
 "Notify on cable changes" = "Ziņot par kabeļa izmaiņām";
+"Notify on app updates" = "Ziņot par lietotnes atjauninājumiem";
 "Open in GitHub" = "Atvērt GitHub";
 "Opens a pre-filled GitHub issue in your browser. Nothing is sent until you submit there." = "Atver iepriekš aizpildītu GitHub problēmu jūsu pārlūkā. Nekas netiek nosūtīts, kamēr jūs to neiesniedzat.";
 "Optical" = "Optisks";
