@@ -25,9 +25,11 @@ final class NotificationManager {
     /// (present -> absent -> present). Comparing each publish in isolation
     /// fires a "connected" notification per flap. Instead we wait for the set
     /// to stop changing, then reconcile once. The window must exceed the gap
-    /// between consecutive publishes during a connect; the background poll
-    /// runs every 1s (WatcherHub.startPoll), so an absent/present pair can be
-    /// ~1s apart. 1.5s clears that with margin. See issue #227 follow-up.
+    /// between consecutive publishes during a connect. Those publishes are
+    /// driven by the power-source IOKit notifications (match/terminated), not
+    /// by WatcherHub's steady poll, so the flap happens at IOKit speed
+    /// regardless of the poll cadence; the gap is sub-second. 1.5s clears it
+    /// with margin. See issue #227 follow-up.
     private let chargerSettleWindow: Duration = .milliseconds(1500)
 
     private init() {}

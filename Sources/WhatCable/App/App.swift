@@ -169,9 +169,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         AppSettings.shared.$showChargingWatts
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.lastShownWatts = nil  // force a repaint on toggle
-                self?.updateMenuBarWatts()
+            .sink { [weak self] enabled in
+                guard let self else { return }
+                self.lastShownWatts = nil  // force a repaint on toggle
+                // Only run the 1 Hz watts tick while the readout is enabled.
+                if enabled { self.startWattsTimerIfNeeded() } else { self.stopWattsTimer() }
+                self.updateMenuBarWatts()
             }
             .store(in: &cancellables)
 
@@ -268,6 +271,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         return true
     }
 
+    /// Track window-mode visibility for the poll cadence. macOS sets
+    /// `.visible` when any part of the window is on screen and clears it when
+    /// the window is miniaturised or fully covered, so this follows real
+    /// visibility, not just key focus. Only the main content window matters;
+    /// the transient welcome window is ignored.
+    func windowDidChangeOcclusionState(_ notification: Notification) {
+        guard let changed = notification.object as? NSWindow, changed === window else { return }
+        WatcherHub.shared.setUIVisible(changed.occlusionState.contains(.visible))
+    }
+
     // MARK: - Display mode
 
     private func applyDisplayMode(menuBar: Bool) {
@@ -317,13 +330,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         updateMenuBarWatts()
 
         // Re-evaluate the label on a steady 1 Hz tick so it clears on unplug
-        // even when no power-source node change fires the `$sources` sink.
-        // Guard against duplicates: applyDisplayMode can re-enter this after a
-        // teardown when the user flips the display mode.
+        // even when no power-source node change fires the `$sources` sink. Only
+        // started when the watts readout is enabled (off by default), so the
+        // common case pays no per-second wakeup here at all.
+        startWattsTimerIfNeeded()
+    }
+
+    /// Start the 1 Hz watts-label tick, but only when the user has the readout
+    /// enabled and a status item exists (menu-bar mode). With the readout off
+    /// (the default) there is no timer, so no per-second wakeup. Idempotent:
+    /// re-entry while a timer is already running is a no-op, which also guards
+    /// against applyDisplayMode re-entering after a teardown.
+    private func startWattsTimerIfNeeded() {
+        guard AppSettings.shared.showChargingWatts, statusItem != nil else { return }
         guard wattsTimer == nil else { return }
         wattsTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.updateMenuBarWatts() }
         }
+    }
+
+    private func stopWattsTimer() {
+        wattsTimer?.invalidate()
+        wattsTimer = nil
     }
 
     /// Set the status-item glyph, falling back to a short text label if the
@@ -493,6 +521,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     private func setUpWindowMode() {
         if let window {
             window.makeKeyAndOrderFront(nil)
+            WatcherHub.shared.setUIVisible(true)
             return
         }
         let host = NSHostingController(
@@ -507,12 +536,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         w.isReleasedWhenClosed = false
         window = w
         w.makeKeyAndOrderFront(nil)
+        // Window is on screen: poll at the live cadence. Occlusion changes
+        // (miniaturise, fully covered) flip this back via the delegate below.
+        WatcherHub.shared.setUIVisible(true)
     }
 
     private func tearDownWindowMode() {
         window?.delegate = nil
         window?.close()
         window = nil
+        // No surface left in window mode: drop to the idle poll cadence.
+        WatcherHub.shared.setUIVisible(false)
     }
 
     // MARK: - Status item handling (menu bar mode)
@@ -689,8 +723,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
     // MARK: - NSPopoverDelegate
 
+    nonisolated func popoverDidShow(_ notification: Notification) {
+        // Popover is on screen: poll at the live cadence so readings tick.
+        Task { @MainActor in WatcherHub.shared.setUIVisible(true) }
+    }
+
     nonisolated func popoverDidClose(_ notification: Notification) {
         Task { @MainActor in
+            // Nothing visible now: drop to the idle cadence to save battery.
+            WatcherHub.shared.setUIVisible(false)
             Self.refreshSignal.optionHeld = false
             Self.refreshSignal.showSettings = false
             Self.refreshSignal.showTestKitConsent = false

@@ -24,6 +24,19 @@ public final class WatcherHub {
     private var burstTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
+    /// Steady-poll cadence. 1 Hz while a UI surface (the popover or a visible
+    /// window) is on screen, so live readings tick smoothly. When nothing is
+    /// visible we back right off: connect/disconnect already arrives via the
+    /// watchers' own IOKit notifications (and the burst triggers below), so the
+    /// steady poll's only idle job is catching slow value drift, which no one
+    /// can see with the UI hidden. This is the bulk of the app's energy use
+    /// when it just sits in the menu bar.
+    private let activeInterval: Duration = .seconds(1)
+    private let idleInterval: Duration = .seconds(30)
+    /// Whether a UI surface is currently visible. Starts false: in menu-bar mode
+    /// (the default) the app launches with the popover closed, so it begins idle.
+    private var isUIVisible = false
+
     private init() {}
 
     public func start() {
@@ -43,6 +56,20 @@ public final class WatcherHub {
         setupBurstTriggers()
     }
 
+    /// Tell the hub whether a UI surface is on screen. The app calls this when
+    /// the popover opens/closes (menu-bar mode) or the window's visibility
+    /// changes (window mode). Becoming visible refreshes once immediately so the
+    /// surface paints current data, then restarts the poll at the faster
+    /// cadence; going idle restarts it at the slower one. Connect/disconnect
+    /// detection is unaffected either way: it runs off IOKit notifications, not
+    /// this poll.
+    public func setUIVisible(_ visible: Bool) {
+        guard isStarted, visible != isUIVisible else { return }
+        isUIVisible = visible
+        if visible { refreshAll() }
+        startPoll()
+    }
+
     public func refreshAll() {
         portWatcher.refresh()
         powerWatcher.refresh()
@@ -55,9 +82,10 @@ public final class WatcherHub {
 
     private func startPoll() {
         pollTask?.cancel()
+        let interval = isUIVisible ? activeInterval : idleInterval
         pollTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
+                try? await Task.sleep(for: interval)
                 guard !Task.isCancelled, let self else { return }
                 self.refreshAll()
             }
