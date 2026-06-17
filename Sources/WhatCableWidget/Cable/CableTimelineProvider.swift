@@ -71,6 +71,38 @@ struct CableTimelineProvider: AppIntentTimelineProvider {
         let phyWatcher = AppleTypeCPhyWatcher()
         let displayWatcher = DisplayPortTransportWatcher()
 
+        // Each watcher's start() registers a persistent IOKit notification
+        // wired to the main dispatch queue, holding an UNRETAINED pointer back
+        // to the watcher (Unmanaged.passUnretained). Once this function returns
+        // the local watcher objects are freed, but the notification ports would
+        // outlive them, so the next device add/remove event would fire a
+        // callback into freed memory and crash the widget (issue #341).
+        //
+        // stop() destroys each notification port. Tearing every watcher down
+        // before we return closes that window. Safe here because this method is
+        // @MainActor and fully synchronous (no await), so no callback can
+        // interleave during the body, and the data we need is copied into
+        // value-type arrays before the defer fires.
+        //
+        // It is also safe against an event that lands mid-snapshot: every
+        // watcher delivers via IONotificationPortSetDispatchQueue(port, .main),
+        // and IONotificationPortDestroy cancels that dispatch source. Because
+        // we run on the main queue and destroy on the main queue, any callout
+        // queued for an in-flight kernel message is ordered after us; by the
+        // time it would run, the source is already cancelled, so libdispatch
+        // suppresses it and the freed watcher is never touched.
+        defer {
+            portWatcher.stop()
+            powerWatcher.stop()
+            pdWatcher.stop()
+            usbWatcher.stop()
+            tbWatcher.stop()
+            usb3Watcher.stop()
+            trmWatcher.stop()
+            phyWatcher.stop()
+            displayWatcher.stop()
+        }
+
         portWatcher.start()
         powerWatcher.start()
         pdWatcher.start()
