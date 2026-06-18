@@ -238,6 +238,20 @@
     "xid" : "none"
   },
   {
+    "brand" : "Cable Matters Thunderbolt 5 80 Gbps \/ 240 W cable (VID\/PID zeroed)",
+    "cableVDO" : "0x000A2644",
+    "issueNum" : "#343",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/343",
+    "pid" : "0x0000",
+    "power" : "5 A \/ 50 V (240 W)",
+    "registered" : true,
+    "speed" : "USB4 Gen 4 (80 Gbps, Thunderbolt 5 class)",
+    "type" : "passive",
+    "vendor" : "(zeroed)",
+    "vid" : "0x0000",
+    "xid" : "none"
+  },
+  {
     "brand" : "UGREEN 140 W charger bundled cable (VID\/PID zeroed)",
     "cableVDO" : "0x000A4640",
     "issueNum" : "#327",
@@ -532,6 +546,20 @@
     "xid" : "none"
   },
   {
+    "brand" : "Apple Thunderbolt 4 Pro Cable (1.8 m)",
+    "cableVDO" : "0x12082042",
+    "issueNum" : "#342",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/342",
+    "pid" : "0x7208",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB 3.2 Gen 2 (10 Gbps)",
+    "type" : "passive",
+    "vendor" : "Apple",
+    "vid" : "0x05AC",
+    "xid" : "0x2600"
+  },
+  {
     "brand" : "Apple Thunderbolt 5 cable 1 m",
     "cableVDO" : "0x110A2644",
     "issueNum" : "#93",
@@ -543,6 +571,20 @@
     "type" : "passive",
     "vendor" : "Apple",
     "vid" : "0x05AC",
+    "xid" : "none"
+  },
+  {
+    "brand" : "WD My Passport SSD bundled cable (Joinsoon)",
+    "cableVDO" : "0x00082022",
+    "issueNum" : "#345",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/345",
+    "pid" : "0x0000",
+    "power" : "3 A \/ 20 V (60 W)",
+    "registered" : true,
+    "speed" : "USB 3.2 Gen 2 (10 Gbps)",
+    "type" : "passive",
+    "vendor" : "Joinsoon Electronics Mfg. Co., Ltd.",
+    "vid" : "0x060F",
     "xid" : "none"
   },
   {

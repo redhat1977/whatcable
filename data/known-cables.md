@@ -117,6 +117,9 @@ hand-maintained markdown table; format may change once the consumer exists.
 | LG 27MD5KL bundled Thunderbolt 3 cable (Sumitomo silicon) | `0x20C2` | `0x0004` | `0x21085858` | Sumitomo Electric Ind., Ltd., Optical Comm. R&D Lab | none | USB 2.0 (480 Mbps) | 5 A / 20 V (100 W) | active | [#331](https://github.com/darrylmorley/whatcable/issues/331) |
 | LOGIIX Piston Connect USB-C cable (240W / 40 Gbps) | `0x315C` | `0x0000` | `0x000A2E43` | Chengdu Convenientpower Semiconductor Co., LTD | none | USB4 Gen 3 (40 Gbps, Thunderbolt 4 class) | 5 A / 50 V (240 W) | passive | [#328](https://github.com/darrylmorley/whatcable/issues/328) |
 | UGREEN 140 W charger bundled cable (VID/PID zeroed) | `0x0000` | `0x0000` | `0x000A4640` | (zeroed) | none | USB 2.0 (480 Mbps) | 5 A / 50 V (240 W) | passive | [#327](https://github.com/darrylmorley/whatcable/issues/327) |
+| Apple Thunderbolt 4 Pro Cable (1.8 m) | `0x05AC` | `0x7208` | `0x12082042` | Apple | `0x2600` | USB 3.2 Gen 2 (10 Gbps) | 5 A / 20 V (100 W) | passive | [#342](https://github.com/darrylmorley/whatcable/issues/342) |
+| WD My Passport SSD bundled cable (Joinsoon) | `0x060F` | `0x0000` | `0x00082022` | Joinsoon Electronics Mfg. Co., Ltd. | none | USB 3.2 Gen 2 (10 Gbps) | 3 A / 20 V (60 W) | passive | [#345](https://github.com/darrylmorley/whatcable/issues/345) |
+| Cable Matters Thunderbolt 5 80 Gbps / 240 W cable (VID/PID zeroed) | `0x0000` | `0x0000` | `0x000A2644` | (zeroed) | none | USB4 Gen 4 (80 Gbps, Thunderbolt 5 class) | 5 A / 50 V (240 W) | passive | [#343](https://github.com/darrylmorley/whatcable/issues/343) |
 
 Sorted by VID. The zeroed-fingerprint entry is parked at the bottom because it
 is identity-less.
