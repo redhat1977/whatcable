@@ -96,6 +96,17 @@ struct CableDBTests {
         #expect(CableDB.isUSBIFRegistered(0x6666) == false)
     }
 
+    @Test("manual vendor resolves name but stays not USB-IF registered")
+    func manualVendorResolvesButNotUSBIFRegistered() {
+        // VID 0x01B6 is CalDigit's Thunderbolt-class identifier. It is not
+        // in the USB-IF list (their USB-IF VID is 0x2188 / CalDigit, Inc.)
+        // and not in usb.ids, so it lives in data/manual-vendors.tsv. The
+        // app should resolve the name, but the trust signal must stay
+        // "not USB-IF registered".
+        #expect(CableDB.vendorName(vid: 0x01B6) == "CalDigit, Inc.")
+        #expect(CableDB.isUSBIFRegistered(0x01B6) == false)
+    }
+
     @Test("curated cable not found for unknown")
     func curatedCableNotFoundForUnknown() {
         #expect(CableDB.curatedCables(vid: 0xDEAD, pid: 0xBEEF).isEmpty)

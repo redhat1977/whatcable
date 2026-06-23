@@ -415,7 +415,7 @@
     "registered" : false,
     "speed" : "USB4 Gen 3 (40 Gbps, Thunderbolt 4 class)",
     "type" : "passive",
-    "vendor" : "Unregistered",
+    "vendor" : "CalDigit, Inc.",
     "vid" : "0x01B6",
     "xid" : "0x302F"
   },
@@ -429,7 +429,7 @@
     "registered" : false,
     "speed" : "USB4 Gen 4 (80 Gbps, Thunderbolt 5 class)",
     "type" : "passive",
-    "vendor" : "Unregistered",
+    "vendor" : "CalDigit, Inc.",
     "vid" : "0x01B6",
     "xid" : "0x303B"
   },
@@ -443,7 +443,7 @@
     "registered" : false,
     "speed" : "USB4 Gen 4 (80 Gbps)",
     "type" : "passive",
-    "vendor" : "Unregistered",
+    "vendor" : "CalDigit, Inc.",
     "vid" : "0x01B6",
     "xid" : "0x303C"
   },

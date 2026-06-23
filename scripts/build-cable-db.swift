@@ -22,6 +22,7 @@ import SQLite3
 
 let repoRoot = FileManager.default.currentDirectoryPath
 let vendorTSV = "\(repoRoot)/Sources/WhatCableCore/Resources/usbif-vendors.tsv"
+let manualVendorTSV = "\(repoRoot)/data/manual-vendors.tsv"
 let dbOutput = "\(repoRoot)/Sources/WhatCableCore/Resources/whatcable.db"
 let dbWebCopy = "\(repoRoot)/docs/whatcable.db"
 let cablesJSON = "\(repoRoot)/docs/cables.json"
@@ -240,6 +241,250 @@ func importUSBIDsVendors() -> (inserted: Int, skipped: Int) {
     runSQL("COMMIT")
     sqlite3_finalize(stmt)
     return (inserted, skipped)
+}
+
+// MARK: - Manual vendor import (editorial additions)
+
+struct ManualVendorEntry: Equatable {
+    let vid: Int
+    let name: String
+}
+
+/// Pure parser for manual-vendors.tsv. Returns parsed entries plus any
+/// warnings the build script should print. Kept side-effect free so the
+/// `--test-parser` mode can exercise it directly.
+///
+/// Validation rules:
+/// - Comment lines (starting with `#`) and blank lines are ignored.
+/// - Each data line must have exactly 2 tab-separated fields. Lines with
+///   the wrong number of fields are warned and skipped.
+/// - VID must be hex (with or without `0x`/`0X` prefix), within 0...0xFFFF.
+/// - Name must be non-empty after trimming.
+/// - Duplicate VIDs are warned and skipped (first occurrence wins).
+func parseManualVendorsText(_ text: String) -> (entries: [ManualVendorEntry], warnings: [String]) {
+    var entries: [ManualVendorEntry] = []
+    var warnings: [String] = []
+    var seen: Set<Int> = []
+
+    for (zeroBasedIndex, rawLine) in text.components(separatedBy: "\n").enumerated() {
+        let lineNum = zeroBasedIndex + 1
+        // Trim only newlines and carriage returns at the line level so a
+        // trailing tab (which is a real field separator) is not silently
+        // collapsed into a single-field line. Per-field trimming below
+        // still uses full whitespace.
+        let line = rawLine.trimmingCharacters(in: CharacterSet(charactersIn: "\r\n"))
+        let visible = line.trimmingCharacters(in: .whitespaces)
+        if visible.isEmpty || visible.hasPrefix("#") { continue }
+
+        let parts = line.components(separatedBy: "\t")
+        guard parts.count == 2 else {
+            warnings.append("manual-vendors.tsv line \(lineNum): expected exactly 2 tab-separated fields, got \(parts.count); skipping")
+            continue
+        }
+
+        let vidToken = parts[0].trimmingCharacters(in: .whitespaces)
+        let name = parts[1].trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else {
+            warnings.append("manual-vendors.tsv line \(lineNum): empty vendor name; skipping")
+            continue
+        }
+
+        let hexPart: String
+        if vidToken.hasPrefix("0x") || vidToken.hasPrefix("0X") {
+            hexPart = String(vidToken.dropFirst(2))
+        } else {
+            hexPart = vidToken
+        }
+        guard !hexPart.isEmpty, let vid = Int(hexPart, radix: 16) else {
+            warnings.append("manual-vendors.tsv line \(lineNum): cannot parse VID '\(vidToken)' as hex; skipping")
+            continue
+        }
+        guard (0...0xFFFF).contains(vid) else {
+            warnings.append("manual-vendors.tsv line \(lineNum): VID '\(vidToken)' out of range (0...0xFFFF); skipping")
+            continue
+        }
+
+        if !seen.insert(vid).inserted {
+            warnings.append(String(format: "manual-vendors.tsv line %d: duplicate VID 0x%04X; keeping first occurrence", lineNum, vid))
+            continue
+        }
+
+        entries.append(ManualVendorEntry(vid: vid, name: name))
+    }
+
+    return (entries, warnings)
+}
+
+func importManualVendors() -> (inserted: Int, skipped: Int) {
+    guard let text = try? String(contentsOfFile: manualVendorTSV, encoding: .utf8) else {
+        // The file is optional; an empty manual list is a valid state.
+        return (0, 0)
+    }
+
+    let parsed = parseManualVendorsText(text)
+    for warning in parsed.warnings {
+        fputs("warn: \(warning)\n", stderr)
+    }
+
+    // INSERT OR IGNORE: USB-IF and usb.ids entries take priority, so a
+    // manual row never silently overwrites either authoritative source.
+    let insertSQL = "INSERT OR IGNORE INTO vendors (vid, name, source) VALUES (?, ?, 'manual')"
+    var stmt: OpaquePointer?
+    guard sqlite3_prepare_v2(db, insertSQL, -1, &stmt, nil) == SQLITE_OK else {
+        fputs("warn: prepare failed for manual vendor insert\n", stderr)
+        return (0, 0)
+    }
+
+    runSQL("BEGIN TRANSACTION")
+    var inserted = 0
+    var skipped = 0
+
+    for entry in parsed.entries {
+        sqlite3_reset(stmt)
+        sqlite3_bind_int(stmt, 1, Int32(entry.vid))
+        sqlite3_bind_text(stmt, 2, (entry.name as NSString).utf8String, -1, nil)
+
+        let rc = sqlite3_step(stmt)
+        if rc == SQLITE_DONE {
+            if sqlite3_changes(db) > 0 {
+                inserted += 1
+            } else {
+                skipped += 1
+            }
+        } else {
+            skipped += 1
+        }
+    }
+
+    runSQL("COMMIT")
+    sqlite3_finalize(stmt)
+    return (inserted, skipped)
+}
+
+// MARK: - Self-test mode (--test-parser)
+
+/// Returns a tuple (failures, output). Failures is the number of failed
+/// assertions; output is the formatted test report.
+func runManualVendorParserSelfTests() -> (failures: Int, output: String) {
+    struct Case {
+        let label: String
+        let input: String
+        let expectedEntries: [ManualVendorEntry]
+        let expectedWarningSubstrings: [String]
+    }
+
+    let cases: [Case] = [
+        Case(
+            label: "happy path: single entry with 0x prefix",
+            input: "0x01B6\tCalDigit, Inc.\n",
+            expectedEntries: [ManualVendorEntry(vid: 0x01B6, name: "CalDigit, Inc.")],
+            expectedWarningSubstrings: []
+        ),
+        Case(
+            label: "happy path: hex without prefix, lowercase, uppercase",
+            input: "01b6\tlower\n0X02A2\tupper-prefix\nFFFF\tmax\n",
+            expectedEntries: [
+                ManualVendorEntry(vid: 0x01B6, name: "lower"),
+                ManualVendorEntry(vid: 0x02A2, name: "upper-prefix"),
+                ManualVendorEntry(vid: 0xFFFF, name: "max"),
+            ],
+            expectedWarningSubstrings: []
+        ),
+        Case(
+            label: "comments and blank lines are ignored",
+            input: "# header comment\n\n# another\n0x01B6\tCalDigit, Inc.\n\n",
+            expectedEntries: [ManualVendorEntry(vid: 0x01B6, name: "CalDigit, Inc.")],
+            expectedWarningSubstrings: []
+        ),
+        Case(
+            label: "extra fields are rejected",
+            input: "0x01B6\tCalDigit, Inc.\textra\n",
+            expectedEntries: [],
+            expectedWarningSubstrings: ["expected exactly 2 tab-separated fields"]
+        ),
+        Case(
+            label: "single field is rejected",
+            input: "0x01B6\n",
+            expectedEntries: [],
+            expectedWarningSubstrings: ["expected exactly 2 tab-separated fields"]
+        ),
+        Case(
+            label: "empty name is rejected",
+            input: "0x01B6\t   \n",
+            expectedEntries: [],
+            expectedWarningSubstrings: ["empty vendor name"]
+        ),
+        Case(
+            label: "non-hex VID is rejected",
+            input: "0xZZZZ\tBogus\n",
+            expectedEntries: [],
+            expectedWarningSubstrings: ["cannot parse VID"]
+        ),
+        Case(
+            label: "VID out of 16-bit range is rejected",
+            input: "0x10000\tToo big\n",
+            expectedEntries: [],
+            expectedWarningSubstrings: ["out of range"]
+        ),
+        Case(
+            label: "duplicate VID: first wins, second warned",
+            input: "0x01B6\tFirst\n0x01B6\tSecond\n",
+            expectedEntries: [ManualVendorEntry(vid: 0x01B6, name: "First")],
+            expectedWarningSubstrings: ["duplicate VID 0x01B6"]
+        ),
+        Case(
+            label: "VID 0 is allowed (lower bound)",
+            input: "0x0000\tBoundary low\n",
+            expectedEntries: [ManualVendorEntry(vid: 0, name: "Boundary low")],
+            expectedWarningSubstrings: []
+        ),
+    ]
+
+    var output = "Manual vendor parser self-tests\n"
+    output += "================================\n"
+    var failures = 0
+
+    for c in cases {
+        let result = parseManualVendorsText(c.input)
+        var caseFailed = false
+        var detail = ""
+
+        if result.entries != c.expectedEntries {
+            caseFailed = true
+            detail += "  entries: expected \(c.expectedEntries), got \(result.entries)\n"
+        }
+        for substring in c.expectedWarningSubstrings {
+            if !result.warnings.contains(where: { $0.contains(substring) }) {
+                caseFailed = true
+                detail += "  warnings missing '\(substring)'; got \(result.warnings)\n"
+            }
+        }
+        if c.expectedWarningSubstrings.isEmpty && !result.warnings.isEmpty {
+            caseFailed = true
+            detail += "  unexpected warnings: \(result.warnings)\n"
+        }
+
+        if caseFailed {
+            failures += 1
+            output += "FAIL  \(c.label)\n"
+            output += detail
+        } else {
+            output += "ok    \(c.label)\n"
+        }
+    }
+
+    output += "\n\(cases.count - failures)/\(cases.count) passed"
+    if failures > 0 {
+        output += ", \(failures) FAILED"
+    }
+    output += "\n"
+    return (failures, output)
+}
+
+if CommandLine.arguments.contains("--test-parser") {
+    let (failures, report) = runManualVendorParserSelfTests()
+    FileHandle.standardOutput.write(report.data(using: .utf8) ?? Data())
+    exit(failures == 0 ? 0 : 1)
 }
 
 // MARK: - Known cables import (from data/known-cables.md)
@@ -499,6 +744,9 @@ print("Imported \(vendorCount) USB-IF vendors")
 
 let usbids = importUSBIDsVendors()
 print("usb.ids: \(usbids.inserted) new vendors added, \(usbids.skipped) already in USB-IF list")
+
+let manual = importManualVendors()
+print("manual-vendors: \(manual.inserted) added, \(manual.skipped) skipped (already in USB-IF or usb.ids)")
 
 let cableCount = importKnownCables()
 print("Imported \(cableCount) known cables")
