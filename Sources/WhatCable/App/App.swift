@@ -84,9 +84,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
     private var cancellables: Set<AnyCancellable> = []
 
-    /// The last rounded-watts value we painted onto the status item title, so
-    /// we can skip the expensive layout pass when the value hasn't changed.
-    private var lastShownWatts: Int? = nil
+    /// What's currently painted on the status item, so we skip the layout pass
+    /// when nothing meaningful changed. Covers the glyph, the numeric readout, and
+    /// the power bar's quantised fill step.
+    private enum MenuBarContent: Equatable {
+        case glyphOnly(symbol: String)
+        case number(symbol: String, watts: Int)
+        case bar(symbol: String, fillStep: Int)
+    }
+    private var lastMenuBarContent: MenuBarContent?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         log.notice("launch: version=\(AppInfo.version, privacy: .public) macOS=\(ProcessInfo.processInfo.operatingSystemVersionString, privacy: .public)")
@@ -135,19 +141,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             .removeDuplicates()
             .dropFirst()
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] symbolName in
-                self?.updateMenuBarIcon(symbolName)
+            .sink { [weak self] _ in
+                self?.updateMenuBarPresentation()
             }
             .store(in: &cancellables)
 
-        // Repaint the watts label whenever the watcher publishes a new value.
-        // The watcher recomputes on WatcherHub's existing poll cadence (1 Hz
-        // visible, 30 s idle) and only publishes on change, so there's no
-        // separate per-second timer and no IOKit read in the app target.
+        // Repaint whenever the watcher publishes new power values. The watcher
+        // recomputes on WatcherHub's existing poll cadence (1 Hz visible, 30 s
+        // idle) and only publishes on change, so there's no separate per-second
+        // timer and no IOKit read in the app target. Rated watts feeds the bar.
         WatcherHub.shared.powerWatcher.$chargerInputWatts
+            .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.updateMenuBarWatts()
+                self?.updateMenuBarPresentation()
+            }
+            .store(in: &cancellables)
+
+        WatcherHub.shared.powerWatcher.$chargerRatedWatts
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateMenuBarPresentation()
             }
             .store(in: &cancellables)
 
@@ -156,10 +171,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
-                self.lastShownWatts = nil  // force a repaint on toggle
+                self.lastMenuBarContent = nil  // force a repaint on toggle
                 // Turn the watcher's charger-in read on/off with the toggle.
                 self.syncChargerWattsReading()
-                self.updateMenuBarWatts()
+                self.updateMenuBarPresentation()
+            }
+            .store(in: &cancellables)
+
+        // Repaint when the user switches between the number and the bar.
+        AppSettings.shared.$menuBarWattsStyle
+            .removeDuplicates()
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                self.lastMenuBarContent = nil  // force a repaint on style change
+                self.updateMenuBarPresentation()
             }
             .store(in: &cancellables)
 
@@ -318,7 +345,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         if statusItem == nil {
             let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
             if let button = item.button {
-                applyMenuBarIcon(to: button, symbolName: AppSettings.shared.menuBarIcon)
+                applyGlyph(to: button, symbolName: AppSettings.shared.menuBarIcon)
                 button.target = self
                 button.action = #selector(handleClick(_:))
                 button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -332,9 +359,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             log.notice("menuBar: statusItem created, isVisible=\(item.isVisible)")
         }
         // Turn on the watcher's charger-in read if the toggle is already on, then
-        // paint the initial label from whatever it has published.
+        // paint the initial state from whatever it has published.
         syncChargerWattsReading()
-        updateMenuBarWatts()
+        updateMenuBarPresentation()
     }
 
     /// Tell the shared power watcher whether to compute the live charger-in
@@ -392,17 +419,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         return canvas
     }
 
-    /// Set the status-item glyph, falling back to a short text label if the
-    /// SF Symbol is unavailable on this macOS (keeps the menu bar usable).
-    ///
-    /// The glyph is centred in a fixed-size canvas (see `menuBarIconCanvasSize`)
-    /// so the button width is identical for every icon, which keeps the popover
-    /// anchor stable across an icon swap without a close/reopen.
-    private func applyMenuBarIcon(to button: NSStatusBarButton, symbolName: String) {
-        let config = NSImage.SymbolConfiguration(pointSize: Self.menuBarIconPointSize, weight: .regular)
-        if let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: AppInfo.name)?
-            .withSymbolConfiguration(config) {
-            button.image = Self.centeredMenuBarIcon(symbol)
+    /// The centred, constant-width glyph for a symbol name, or nil if the symbol
+    /// is unavailable on this macOS.
+    private static func glyphImage(_ symbolName: String) -> NSImage? {
+        let config = NSImage.SymbolConfiguration(pointSize: menuBarIconPointSize, weight: .regular)
+        guard let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: AppInfo.name)?
+            .withSymbolConfiguration(config) else { return nil }
+        return centeredMenuBarIcon(symbol)
+    }
+
+    /// Set the status-item button to the plain glyph (no readout). Falls back to
+    /// a short text label if the SF Symbol is unavailable (keeps the menu bar
+    /// usable). The glyph is a fixed-width canvas so the button width is identical
+    /// for every icon, keeping the popover anchor stable across an icon swap.
+    private func applyGlyph(to button: NSStatusBarButton, symbolName: String) {
+        if let image = Self.glyphImage(symbolName) {
+            button.image = image
             button.imagePosition = .imageOnly
             button.title = ""
         } else {
@@ -411,40 +443,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             button.imagePosition = .noImage
             button.title = "WC"
         }
-        button.needsLayout = true
-        button.needsDisplay = true
-        button.layoutSubtreeIfNeeded()
-    }
-
-    /// Swap the live menu bar glyph when the user picks a new one in Settings.
-    ///
-    /// Because every glyph is rendered to the same fixed width, the button
-    /// geometry doesn't change across a swap, so the reseat below is a no-op and
-    /// the popover stays put (no blink). `applyMenuBarIcon` clears the title, so
-    /// the watts label is re-applied here, otherwise an icon swap would drop it
-    /// until the wattage next changed (the value dedup keeps it hidden).
-    private func updateMenuBarIcon(_ symbolName: String) {
-        guard let button = statusItem?.button else { return }
-        let widthBefore = button.frame.width
-        applyMenuBarIcon(to: button, symbolName: symbolName)
-        reapplyWattsLabelAfterIconSwap(on: button)
-        reseatPopoverAfterWidthChange(button: button, widthBefore: widthBefore)
-    }
-
-    /// Re-apply the watts label after an icon swap cleared the button title.
-    /// No-op when the readout is off or there's nothing to show. Does NOT reseat:
-    /// `updateMenuBarIcon` does a single reseat against the pre-swap width.
-    private func reapplyWattsLabelAfterIconSwap(on button: NSStatusBarButton) {
-        guard AppSettings.shared.showChargingWatts else { return }
-        let watts = WatcherHub.shared.powerWatcher.chargerInputWatts
-        guard watts > 0 else { return }
-        lastShownWatts = watts
-        button.attributedTitle = Self.wattsAttributedTitle(watts)
-        button.imagePosition = .imageLeft
-        // Re-layout now so the caller's reseat check reads the final width (with
-        // the label back), not the transient image-only width, which would fire
-        // a spurious close/reopen.
-        button.layoutSubtreeIfNeeded()
     }
 
     /// Re-anchor the popover after the status-item button changed width, so its
@@ -462,46 +460,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         togglePopover(from: button)
     }
 
-    /// Paint the status-item title from the watcher's published charger-in watts.
+    /// Single entry point that paints the status item for the current state: the
+    /// plain glyph, the glyph plus the numeric "NNW" readout, or the glyph plus a
+    /// power bar. One renderer so the icon swap, the watts update, and the style
+    /// change can't fight over the button. Dedupes on `lastMenuBarContent` so an
+    /// unchanged state does no layout work.
     ///
-    /// Called when the watcher publishes a new value, when the toggle changes,
-    /// and on menu-bar setup. Only repaints when the rounded value actually
-    /// changes, to avoid layout churn. When the toggle is off, or on battery, or
-    /// watts are 0/unavailable, hides the title and restores the icon-only layout.
-    ///
-    /// The IOKit read itself lives in the watcher and only runs while the readout
-    /// is on, so users who have the feature off (the default) pay no read cost.
-    private func updateMenuBarWatts() {
+    /// The IOKit read lives in the watcher and only runs while the readout is on,
+    /// so users with the feature off (the default) pay no read cost.
+    private func updateMenuBarPresentation() {
         guard let button = statusItem?.button else { return }
         guard AppSettings.shared.useMenuBarMode else { return }
 
-        // Nothing to show when the toggle is off (the default state).
-        guard AppSettings.shared.showChargingWatts else {
-            // Guard on whether the label is actually displayed, not the cache.
-            // The sink nils lastShownWatts before calling here, so the old
-            // `guard lastShownWatts != nil` check would always bail out early
-            // and leave the stale "NNW" text in the menu bar until restart.
-            guard !button.attributedTitle.string.isEmpty else { return }
-            clearWattsLabel(on: button)
-            return
+        let symbol = AppSettings.shared.menuBarIcon
+        let watts = WatcherHub.shared.powerWatcher.chargerInputWatts
+        let showReadout = AppSettings.shared.showChargingWatts && watts > 0
+
+        let content: MenuBarContent
+        if showReadout {
+            switch AppSettings.shared.menuBarWattsStyle {
+            case .number:
+                content = .number(symbol: symbol, watts: watts)
+            case .bar:
+                let step = Self.powerBarFillStep(
+                    watts: watts,
+                    rated: WatcherHub.shared.powerWatcher.chargerRatedWatts
+                )
+                content = .bar(symbol: symbol, fillStep: step)
+            }
+        } else {
+            content = .glyphOnly(symbol: symbol)
         }
 
-        let watts = WatcherHub.shared.powerWatcher.chargerInputWatts
-        let shouldShow = watts > 0
+        guard content != lastMenuBarContent else { return }
+        lastMenuBarContent = content
 
-        if shouldShow {
-            guard watts != lastShownWatts else { return }
-            lastShownWatts = watts
-            let widthBefore = button.frame.width
+        let widthBefore = button.frame.width
+        switch content {
+        case .glyphOnly(let symbol):
+            applyGlyph(to: button, symbolName: symbol)
+        case .number(let symbol, let watts):
+            applyGlyph(to: button, symbolName: symbol)
             button.attributedTitle = Self.wattsAttributedTitle(watts)
             button.imagePosition = .imageLeft
-            reseatPopoverAfterWidthChange(button: button, widthBefore: widthBefore)
-        } else {
-            // Guard on actual displayed state, not the cache, for the same
-            // reason as the toggle-off branch above.
-            guard !button.attributedTitle.string.isEmpty else { return }
-            clearWattsLabel(on: button)
+        case .bar(let symbol, let fillStep):
+            button.image = Self.menuBarBarImage(symbolName: symbol, fillStep: fillStep)
+            button.imagePosition = .imageOnly
+            button.title = ""
         }
+        button.needsLayout = true
+        button.needsDisplay = true
+        button.layoutSubtreeIfNeeded()
+        reseatPopoverAfterWidthChange(button: button, widthBefore: widthBefore)
     }
 
     /// The figure-space-padded "NNW" title for the menu bar watts label. The
@@ -522,17 +532,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         )
     }
 
-    /// Clears the watts label from the status bar button and restores the
-    /// icon-only layout. Reseats the popover if the button width changes
-    /// (Settings renders inside the popover; an unconditional reseat would
-    /// blink it unnecessarily).
-    private func clearWattsLabel(on button: NSStatusBarButton) {
-        lastShownWatts = nil
-        let widthBefore = button.frame.width
-        button.attributedTitle = NSAttributedString(string: "")
-        button.title = ""
-        button.imagePosition = .imageOnly
-        reseatPopoverAfterWidthChange(button: button, widthBefore: widthBefore)
+    // MARK: - Power bar
+
+    /// Number of discrete fill steps in the power bar. Quantising the fill keeps
+    /// the bar still instead of twitching every second (issue #366).
+    nonisolated private static let powerBarSteps = 10
+    private static let powerBarWidth: CGFloat = 22
+    private static let powerBarHeight: CGFloat = 6
+    private static let powerBarGap: CGFloat = 4
+    /// Scale used when the adapter doesn't report a rating, so the bar still
+    /// shows something sensible. Covers the common laptop charger range.
+    nonisolated private static let powerBarFallbackRatedWatts = 100.0
+
+    /// Quantised fill level (0...`powerBarSteps`) for live watts against the
+    /// charger's rated wattage. Falls back to a fixed scale when the rating is
+    /// unknown. Any positive draw returns at least step 1 so the bar always shows
+    /// a visible nub while charging, never an empty track. Pure and testable.
+    nonisolated static func powerBarFillStep(watts: Int, rated: Int) -> Int {
+        guard watts > 0 else { return 0 }
+        let denom = rated > 0 ? Double(rated) : powerBarFallbackRatedWatts
+        let fraction = min(1.0, Double(watts) / denom)
+        return max(1, Int((fraction * Double(powerBarSteps)).rounded()))
+    }
+
+    /// Glyph plus a fill bar, composited into one fixed-width template image so
+    /// the menu bar tints it and the button width stays constant as the fill
+    /// changes. The track is drawn faint and the fill solid (template images keep
+    /// alpha, so both tint to the menu bar colour at their drawn opacity).
+    private static func menuBarBarImage(symbolName: String, fillStep: Int) -> NSImage {
+        let glyph = glyphImage(symbolName)
+        let glyphSize = menuBarIconCanvasSize
+        let totalWidth = glyphSize.width + powerBarGap + powerBarWidth
+        let height = max(glyphSize.height, powerBarHeight)
+        let fraction = Double(fillStep) / Double(powerBarSteps)
+        let radius = powerBarHeight / 2
+
+        let image = NSImage(size: NSSize(width: totalWidth, height: height), flipped: false) { _ in
+            if let glyph {
+                let gy = ((height - glyphSize.height) / 2).rounded()
+                glyph.draw(at: NSPoint(x: 0, y: gy), from: .zero, operation: .sourceOver, fraction: 1.0)
+            }
+            let barX = glyphSize.width + powerBarGap
+            let barY = ((height - powerBarHeight) / 2).rounded()
+            let track = NSRect(x: barX, y: barY, width: powerBarWidth, height: powerBarHeight)
+            NSColor.black.withAlphaComponent(0.3).setFill()
+            NSBezierPath(roundedRect: track, xRadius: radius, yRadius: radius).fill()
+            if fraction > 0 {
+                // Floor the fill at one bar-height so a low but non-zero level is
+                // still a visible nub, not an invisible sliver.
+                let fillWidth = max(powerBarHeight, powerBarWidth * CGFloat(fraction))
+                let fill = NSRect(x: barX, y: barY, width: fillWidth, height: powerBarHeight)
+                NSColor.black.setFill()
+                NSBezierPath(roundedRect: fill, xRadius: radius, yRadius: radius).fill()
+            }
+            return true
+        }
+        image.isTemplate = true
+        return image
     }
 
     private func tearDownMenuBarMode() {
@@ -544,7 +600,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             NSStatusBar.system.removeStatusItem(statusItem)
         }
         statusItem = nil
-        lastShownWatts = nil
+        lastMenuBarContent = nil
     }
 
     private func setUpWindowMode() {

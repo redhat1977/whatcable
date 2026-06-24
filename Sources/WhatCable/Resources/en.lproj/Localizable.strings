@@ -35,6 +35,9 @@
 "Lives in the menu bar with no Dock icon." = "Lives in the menu bar with no Dock icon.";
 "Menu bar icon" = "Menu bar icon";
 "Show charging watts in the menu bar" = "Show charging watts in the menu bar";
+"Watts display" = "Watts display";
+"Number" = "Number";
+"Bar" = "Bar";
 /* Menu bar icon choices */
 "Cable" = "Cable";
 "Cable, horizontal" = "Cable, horizontal";

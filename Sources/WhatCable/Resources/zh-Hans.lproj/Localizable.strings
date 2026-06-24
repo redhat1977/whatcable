@@ -159,3 +159,7 @@
 "Display connected" = "已连接显示器";
 "%lld displays connected" = "已连接 %lld 台显示器";
 "Built-in %1$@ port %2$lld" = "内置 %1$@ 端口 %2$lld";
+
+"Watts display" = "瓦特显示";
+"Number" = "数字";
+"Bar" = "条形";

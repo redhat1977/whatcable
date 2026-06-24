@@ -4,6 +4,14 @@ import os.log
 import WhatCableAppKit
 import WhatCableCore
 
+/// How the menu bar shows charger power when `showChargingWatts` is on: the
+/// numeric "NNW" readout, or a calmer fill bar that shows power as a fraction of
+/// the charger's rating and barely moves (issue #366).
+enum MenuBarWattsStyle: String, CaseIterable {
+    case number
+    case bar
+}
+
 /// User-facing preferences, persisted in UserDefaults and (where relevant)
 /// reflected into system services like SMAppService.
 @MainActor
@@ -24,6 +32,7 @@ final class AppSettings: ObservableObject {
         static let testKitLastRunVersion = "testKitLastRunVersion"
         static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let showChargingWatts = "showChargingWatts"
+        static let menuBarWattsStyle = "menuBarWattsStyle"
     }
 
 
@@ -141,6 +150,15 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    /// Whether the watts readout shows a number or a fill bar. Only relevant when
+    /// `showChargingWatts` is on. Defaults to the number (existing behaviour).
+    @Published var menuBarWattsStyle: MenuBarWattsStyle {
+        didSet {
+            guard menuBarWattsStyle != oldValue else { return }
+            UserDefaults.standard.set(menuBarWattsStyle.rawValue, forKey: Keys.menuBarWattsStyle)
+        }
+    }
+
     @Published var menuBarIcon: String {
         didSet {
             let validated = Self.validatedMenuBarIcon(menuBarIcon)
@@ -208,6 +226,8 @@ final class AppSettings: ObservableObject {
         let savedIcon = UserDefaults.standard.string(forKey: Keys.menuBarIcon) ?? Self.defaultMenuBarIcon
         self.menuBarIcon = Self.validatedMenuBarIcon(savedIcon)
         self.showChargingWatts = UserDefaults.standard.bool(forKey: Keys.showChargingWatts)
+        self.menuBarWattsStyle = UserDefaults.standard.string(forKey: Keys.menuBarWattsStyle)
+            .flatMap(MenuBarWattsStyle.init(rawValue:)) ?? .number
     }
 
     private func applyLaunchAtLogin(_ enabled: Bool) {

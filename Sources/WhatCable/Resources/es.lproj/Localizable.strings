@@ -159,3 +159,7 @@
 "Display connected" = "Display connected";
 "%lld displays connected" = "%lld displays connected";
 "Built-in %1$@ port %2$lld" = "Built-in %1$@ port %2$lld";
+
+"Watts display" = "Visualización de vatios";
+"Number" = "Número";
+"Bar" = "Barra";

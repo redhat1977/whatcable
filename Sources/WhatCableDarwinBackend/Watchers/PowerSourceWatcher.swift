@@ -15,6 +15,12 @@ public final class PowerSourceWatcher: ObservableObject {
     /// nothing is readable. Only populated while ``readsChargerInputWatts`` is on.
     @Published public private(set) var chargerInputWatts: Int = 0
 
+    /// The connected charger's rated wattage (its maximum, e.g. 70), used as the
+    /// denominator for the menu bar power bar. 0 on battery or when the adapter
+    /// doesn't report a rating. Published alongside `chargerInputWatts` on the
+    /// same cadence and gate.
+    @Published public private(set) var chargerRatedWatts: Int = 0
+
     /// Whether each refresh should also read the live charger-in wattage. Off by
     /// default, so the common case (menu bar watts readout disabled) does no
     /// SMC / battery read at all. The app turns this on only while the readout is
@@ -29,6 +35,7 @@ public final class PowerSourceWatcher: ObservableObject {
             } else {
                 stopPowerSourceNotification()
                 if chargerInputWatts != 0 { chargerInputWatts = 0 }
+                if chargerRatedWatts != 0 { chargerRatedWatts = 0 }
             }
         }
     }
@@ -150,6 +157,7 @@ public final class PowerSourceWatcher: ObservableObject {
         // same short-circuit the old menu-bar read had).
         guard externalConnected else {
             if chargerInputWatts != 0 { chargerInputWatts = 0 }
+            if chargerRatedWatts != 0 { chargerRatedWatts = 0 }
             return
         }
 
@@ -165,6 +173,10 @@ public final class PowerSourceWatcher: ObservableObject {
             adapterWatts: adapterWatts
         )
         if watts != chargerInputWatts { chargerInputWatts = watts }
+
+        // The adapter's rated maximum, the denominator for the power bar.
+        let rated = adapterWatts ?? 0
+        if rated != chargerRatedWatts { chargerRatedWatts = rated }
     }
 
     /// Pure watts-selection policy, testable without IOKit. Returns 0 on battery

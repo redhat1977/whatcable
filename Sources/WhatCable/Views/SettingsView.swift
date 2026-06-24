@@ -84,6 +84,16 @@ struct SettingsForm: View {
 
                 Toggle(String(localized: "Show charging watts in the menu bar", bundle: _appLocalizedBundle), isOn: $settings.showChargingWatts)
 
+                if settings.showChargingWatts {
+                    Picker(selection: $settings.menuBarWattsStyle) {
+                        Text(String(localized: "Number", bundle: _appLocalizedBundle)).tag(MenuBarWattsStyle.number)
+                        Text(String(localized: "Bar", bundle: _appLocalizedBundle)).tag(MenuBarWattsStyle.bar)
+                    } label: {
+                        Text(String(localized: "Watts display", bundle: _appLocalizedBundle))
+                    }
+                    .pickerStyle(.segmented)
+                }
+
                 Picker(selection: $settings.preferredLanguage) {
                     Text(String(localized: "System Default", bundle: _appLocalizedBundle)).tag("")
                     Divider()
