@@ -183,6 +183,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
                 self?.presentMainSurface()
             }
             .store(in: &cancellables)
+
+        // Idle the watcher poll while the Settings screen is up. Settings shows
+        // no live data, but it renders inside ContentView, which observes every
+        // watcher; left at the active cadence, each poll tick re-renders the
+        // view under the icon picker and intermittently eats a click (issue
+        // surfaced in testing). Menu-bar mode only: window mode drives its own
+        // visibility via occlusion.
+        Self.refreshSignal.$showSettings
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] showSettings in
+                guard let self, let popover = self.popover else { return }
+                WatcherHub.shared.setUIVisible(popover.isShown && !showSettings)
+            }
+            .store(in: &cancellables)
     }
 
     /// Bring the single content surface forward (popover in menu-bar
@@ -332,20 +347,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             AppSettings.shared.showChargingWatts && statusItem != nil
     }
 
+    /// Point size every menu-bar glyph is rendered at.
+    private static let menuBarIconPointSize: CGFloat = 16
+
+    /// The fixed canvas size every menu-bar glyph is composited into, so the
+    /// button image is the same width no matter which symbol is chosen. Computed
+    /// once as the largest rendered glyph across all offered icons (so none is
+    /// clipped). A constant image width means swapping the icon never changes the
+    /// button width, so the popover never has to close and reopen to re-centre
+    /// its arrow. A plain SymbolConfiguration does NOT achieve this: it pins the
+    /// point size, but glyphs still have different intrinsic widths (e.g.
+    /// `cable.connector.horizontal` is wider than `bolt.fill`), which shifted the
+    /// anchor and forced the reseat blink (issue #313).
+    private static let menuBarIconCanvasSize: NSSize = {
+        let config = NSImage.SymbolConfiguration(pointSize: menuBarIconPointSize, weight: .regular)
+        var size = NSSize(width: menuBarIconPointSize, height: menuBarIconPointSize)
+        for name in AppSettings.menuBarIconChoices {
+            guard let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+                .withSymbolConfiguration(config) else { continue }
+            size.width = max(size.width, image.size.width)
+            size.height = max(size.height, image.size.height)
+        }
+        return NSSize(width: ceil(size.width), height: ceil(size.height))
+    }()
+
+    /// Composite an SF Symbol, centred, into the fixed canvas so every glyph
+    /// occupies the same width. Returns a template image so the menu bar tints it.
+    ///
+    /// Uses the drawing-handler initialiser rather than lockFocus so the glyph
+    /// rasterises at each display's backing scale (crisp on Retina) instead of a
+    /// single baked-in scale.
+    private static func centeredMenuBarIcon(_ symbol: NSImage) -> NSImage {
+        let size = menuBarIconCanvasSize
+        let symbolSize = symbol.size
+        let canvas = NSImage(size: size, flipped: false) { _ in
+            let origin = NSPoint(
+                x: ((size.width - symbolSize.width) / 2).rounded(),
+                y: ((size.height - symbolSize.height) / 2).rounded()
+            )
+            symbol.draw(at: origin, from: .zero, operation: .sourceOver, fraction: 1.0)
+            return true
+        }
+        canvas.isTemplate = true
+        return canvas
+    }
+
     /// Set the status-item glyph, falling back to a short text label if the
     /// SF Symbol is unavailable on this macOS (keeps the menu bar usable).
     ///
-    /// A fixed SymbolConfiguration pins every glyph to 16pt regular so the
-    /// button width stays constant regardless of which symbol is chosen.
-    /// Without it, symbols with different intrinsic sizes shift the button
-    /// bounds mid-session and misalign the popover anchor (issue #313).
+    /// The glyph is centred in a fixed-size canvas (see `menuBarIconCanvasSize`)
+    /// so the button width is identical for every icon, which keeps the popover
+    /// anchor stable across an icon swap without a close/reopen.
     private func applyMenuBarIcon(to button: NSStatusBarButton, symbolName: String) {
-        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: AppInfo.name)
-        if let image {
-            let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .regular)
-            let sizedImage = image.withSymbolConfiguration(config) ?? image
-            sizedImage.isTemplate = true
-            button.image = sizedImage
+        let config = NSImage.SymbolConfiguration(pointSize: Self.menuBarIconPointSize, weight: .regular)
+        if let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: AppInfo.name)?
+            .withSymbolConfiguration(config) {
+            button.image = Self.centeredMenuBarIcon(symbol)
             button.imagePosition = .imageOnly
             button.title = ""
         } else {
@@ -361,16 +418,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
 
     /// Swap the live menu bar glyph when the user picks a new one in Settings.
     ///
-    /// The anchor only drifts when the button geometry changes. Reseating the
-    /// popover (close + reopen) causes a visible blink, so it is done only
-    /// when the button width actually changes after the swap. When the
-    /// SymbolConfiguration size-pinning keeps the width stable (the common
-    /// case), the popover is left alone.
+    /// Because every glyph is rendered to the same fixed width, the button
+    /// geometry doesn't change across a swap, so the reseat below is a no-op and
+    /// the popover stays put (no blink). `applyMenuBarIcon` clears the title, so
+    /// the watts label is re-applied here, otherwise an icon swap would drop it
+    /// until the wattage next changed (the value dedup keeps it hidden).
     private func updateMenuBarIcon(_ symbolName: String) {
         guard let button = statusItem?.button else { return }
         let widthBefore = button.frame.width
         applyMenuBarIcon(to: button, symbolName: symbolName)
+        reapplyWattsLabelAfterIconSwap(on: button)
         reseatPopoverAfterWidthChange(button: button, widthBefore: widthBefore)
+    }
+
+    /// Re-apply the watts label after an icon swap cleared the button title.
+    /// No-op when the readout is off or there's nothing to show. Does NOT reseat:
+    /// `updateMenuBarIcon` does a single reseat against the pre-swap width.
+    private func reapplyWattsLabelAfterIconSwap(on button: NSStatusBarButton) {
+        guard AppSettings.shared.showChargingWatts else { return }
+        let watts = WatcherHub.shared.powerWatcher.chargerInputWatts
+        guard watts > 0 else { return }
+        lastShownWatts = watts
+        button.attributedTitle = Self.wattsAttributedTitle(watts)
+        button.imagePosition = .imageLeft
+        // Re-layout now so the caller's reseat check reads the final width (with
+        // the label back), not the transient image-only width, which would fire
+        // a spurious close/reopen.
+        button.layoutSubtreeIfNeeded()
     }
 
     /// Re-anchor the popover after the status-item button changed width, so its
@@ -418,23 +492,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         if shouldShow {
             guard watts != lastShownWatts else { return }
             lastShownWatts = watts
-            // Reserve a constant width so the menu bar item doesn't resize (and
-            // the popover doesn't drift) when the value crosses 9 -> 10. U+2007
-            // is the FIGURE SPACE: in a monospaced-digit font it is exactly one
-            // digit wide, so a padded single digit lines up with a double digit.
-            let digits = String(watts)
-            let padded = digits.count < 2
-                ? String(repeating: "\u{2007}", count: 2 - digits.count) + digits
-                : digits
-            let label = "\(padded)W"
             let widthBefore = button.frame.width
-            let attr = NSAttributedString(
-                string: label,
-                attributes: [
-                    .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
-                ]
-            )
-            button.attributedTitle = attr
+            button.attributedTitle = Self.wattsAttributedTitle(watts)
             button.imagePosition = .imageLeft
             reseatPopoverAfterWidthChange(button: button, widthBefore: widthBefore)
         } else {
@@ -443,6 +502,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             guard !button.attributedTitle.string.isEmpty else { return }
             clearWattsLabel(on: button)
         }
+    }
+
+    /// The figure-space-padded "NNW" title for the menu bar watts label. The
+    /// padding keeps the width constant across 9 -> 10: U+2007 (FIGURE SPACE) is
+    /// exactly one digit wide in a monospaced-digit font, so a padded single
+    /// digit lines up with a double digit and the anchor doesn't drift as the
+    /// value ticks.
+    private static func wattsAttributedTitle(_ watts: Int) -> NSAttributedString {
+        let digits = String(watts)
+        let padded = digits.count < 2
+            ? String(repeating: "\u{2007}", count: 2 - digits.count) + digits
+            : digits
+        return NSAttributedString(
+            string: "\(padded)W",
+            attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+            ]
+        )
     }
 
     /// Clears the watts label from the status bar button and restores the
@@ -678,8 +755,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
     // MARK: - NSPopoverDelegate
 
     nonisolated func popoverDidShow(_ notification: Notification) {
-        // Popover is on screen: poll at the live cadence so readings tick.
-        Task { @MainActor in WatcherHub.shared.setUIVisible(true) }
+        // Popover is on screen: poll at the live cadence so readings tick, unless
+        // it opened straight into Settings (no live data, so stay idle).
+        Task { @MainActor in
+            WatcherHub.shared.setUIVisible(!Self.refreshSignal.showSettings)
+        }
     }
 
     nonisolated func popoverDidClose(_ notification: Notification) {
