@@ -285,7 +285,16 @@ public struct AppleHPMInterface: Identifiable, Hashable {
 
         guard carriesUSB, let busIndex else { return [] }
         return devices.filter { device in
-            device.controllerPortName == nil && device.busIndex == busIndex
+            // Devices that belong to no physical port (front-panel built-in
+            // ports, issue #348; or reached over a Thunderbolt tunnel, #274)
+            // are surfaced by TunnelledDeviceGrouping, not here. Exclude them
+            // from the bus-index fallback so they can't also appear under a
+            // port card (belt-and-braces: the structural flags should already
+            // keep them out, but the fallback matches on bus index alone).
+            device.controllerPortName == nil
+                && !device.isBehindInternalHub
+                && !device.isThunderboltTunnelled
+                && device.busIndex == busIndex
         }
     }
 

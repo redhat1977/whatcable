@@ -31,6 +31,19 @@ public struct USBDevice: Identifiable, Hashable {
     /// and the controller, so `controllerPortName` is `nil` and the normal
     /// port correlation cannot place them.
     public let isThunderboltTunnelled: Bool
+    /// Pure structural signal: this device reached a native USB host controller
+    /// with no `Port-USB-C@N` (`UsbIOPort`) ancestor and was not Thunderbolt
+    /// tunnelled. On a desktop Mac (mini, Studio, Pro) that means a plain-USB
+    /// front-panel port wired to the internal Apple hub, which has no USB-C
+    /// port-controller chip (issue #348). The Darwin backend sets it via
+    /// `USBWatcher.classifyBehindInternalHub`.
+    ///
+    /// This flag does NOT itself mean "desktop". The desktop-only product policy
+    /// (front ports exist only on desktops) is applied downstream, in one place:
+    /// `TunnelledDeviceGrouping.group(isDesktopMac:)`, whose `internalHubDevices`
+    /// result is empty on a laptop. Read that result, not this flag directly, to
+    /// stay laptop-safe.
+    public let isBehindInternalHub: Bool
     /// USB device base class (`bDeviceClass`). `0x11` is the Billboard Device
     /// Class. `nil` when the property is absent.
     public let deviceClass: UInt8?
@@ -59,6 +72,7 @@ public struct USBDevice: Identifiable, Hashable {
         busIndex: Int? = nil,
         controllerPortName: String? = nil,
         isThunderboltTunnelled: Bool = false,
+        isBehindInternalHub: Bool = false,
         deviceClass: UInt8? = nil,
         ioClassName: String? = nil,
         billboard: BillboardCapability? = nil,
@@ -78,6 +92,7 @@ public struct USBDevice: Identifiable, Hashable {
         self.busIndex = busIndex
         self.controllerPortName = controllerPortName
         self.isThunderboltTunnelled = isThunderboltTunnelled
+        self.isBehindInternalHub = isBehindInternalHub
         self.deviceClass = deviceClass
         self.ioClassName = ioClassName
         self.billboard = billboard

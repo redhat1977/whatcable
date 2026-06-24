@@ -487,6 +487,8 @@
 "Connected over Thunderbolt" = "Connected over Thunderbolt";
 "Other USB devices" = "Other USB devices";
 "Reached through a Thunderbolt dock or display, so there's no cable, power, or Thunderbolt data for them." = "Reached through a Thunderbolt dock or display, so there's no cable, power, or Thunderbolt data for them.";
+"Built-in USB ports" = "Built-in USB ports";
+"Plain USB ports behind the Mac's internal hub, so there's no cable, power, or Thunderbolt data for them." = "Plain USB ports behind the Mac's internal hub, so there's no cable, power, or Thunderbolt data for them.";
 
 /* Cable history (DAR-52) */
 "Add this cable" = "Add this cable";

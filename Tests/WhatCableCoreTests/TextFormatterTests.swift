@@ -451,4 +451,42 @@ struct TextFormatterTests {
         )
         #expect(!output.contains("Port-HDMI@"))
     }
+
+    // MARK: - Built-in USB ports gate (issue #348)
+
+    private func frontPortDevice(name: String) -> USBDevice {
+        USBDevice(
+            id: 84, locationID: 0x0020_0000,
+            vendorID: 0x04E8, productID: 0x61FD,
+            vendorName: "Samsung", productName: name,
+            serialNumber: nil, usbVersion: nil, speedRaw: 4,
+            busPowerMA: nil, currentMA: nil,
+            isBehindInternalHub: true,
+            rawProperties: [:]
+        )
+    }
+
+    @Test("Built-in USB ports section renders on a desktop Mac")
+    func builtInUSBSectionRendersOnDesktop() {
+        let output = TextFormatter.render(
+            ports: [makePort()], sources: [], identities: [], showRaw: false,
+            isDesktopMac: true,
+            usbDevices: [frontPortDevice(name: "PSSD T9")]
+        )
+        #expect(output.contains("Built-in USB ports"))
+        #expect(output.contains("PSSD T9"))
+    }
+
+    @Test("Built-in USB ports section is suppressed on a laptop (desktop-only gate)")
+    func builtInUSBSectionSuppressedOnLaptop() {
+        // Same front-port-flagged device, but isDesktopMac is false: the gate
+        // keeps the section off laptops regardless of the structural flag.
+        let output = TextFormatter.render(
+            ports: [makePort()], sources: [], identities: [], showRaw: false,
+            isDesktopMac: false,
+            usbDevices: [frontPortDevice(name: "PSSD T9")]
+        )
+        #expect(!output.contains("Built-in USB ports"))
+        #expect(!output.contains("PSSD T9"))
+    }
 }

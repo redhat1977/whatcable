@@ -99,6 +99,41 @@ struct JSONFormatterTests {
         #expect(without["otherUSBDevices"] == nil)
     }
 
+    // MARK: - Built-in USB ports (issue #348)
+
+    @Test("builtInUSBDevices appears only on a desktop Mac with front-port devices")
+    func builtInUSBDevicesBlock() throws {
+        let drive = USBDevice(
+            id: 84, locationID: 0x0020_0000, vendorID: 0x04E8, productID: 0x61FD,
+            vendorName: "Samsung", productName: "PSSD T9",
+            serialNumber: nil, usbVersion: nil, speedRaw: 4,
+            busPowerMA: nil, currentMA: nil,
+            isBehindInternalHub: true,
+            rawProperties: [:]
+        )
+        // Desktop + front-port device: the block renders.
+        let onDesktop = parse(try JSONFormatter.render(
+            ports: [makePort()], sources: [], identities: [], showRaw: false,
+            isDesktopMac: true, usbDevices: [drive]))
+        let block = onDesktop["builtInUSBDevices"] as? [String: Any]
+        #expect(block != nil)
+        let devices = block?["devices"] as? [[String: Any]]
+        #expect(devices?.first?["name"] as? String == "PSSD T9")
+
+        // Same device on a laptop: the desktop-only gate suppresses the block
+        // even though the structural flag is set (issue #348 safety net).
+        let onLaptop = parse(try JSONFormatter.render(
+            ports: [makePort()], sources: [], identities: [], showRaw: false,
+            isDesktopMac: false, usbDevices: [drive]))
+        #expect(onLaptop["builtInUSBDevices"] == nil)
+
+        // Desktop with no front-port devices: omitted entirely.
+        let emptyDesktop = parse(try JSONFormatter.render(
+            ports: [makePort()], sources: [], identities: [], showRaw: false,
+            isDesktopMac: true))
+        #expect(emptyDesktop["builtInUSBDevices"] == nil)
+    }
+
     // MARK: - Top-level shape
 
     @Test("Top level has version and ports")

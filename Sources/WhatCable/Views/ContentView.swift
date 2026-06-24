@@ -15,7 +15,13 @@ struct ContentView: View {
     @EnvironmentObject private var refresh: RefreshSignal
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var updates = UpdateChecker.shared
-    @State private var isDesktopMac = false
+    /// Whether this Mac has no internal battery (desktop). A hardware fact that
+    /// can't change during a session, so it's resolved once at launch and used
+    /// as the initial state. Resolving it here rather than in `.onAppear` means
+    /// the desktop-gated UI (the charger-identity note, the Built-in USB ports
+    /// card) is correct on the first frame instead of popping in a frame late.
+    private static let isDesktopMacAtLaunch = AppleSmartBatteryReader.read().isDesktopMac
+    @State private var isDesktopMac = ContentView.isDesktopMacAtLaunch
     /// Tracks per-port fault-counter deltas across a connection (DAR-51) so
     /// mid-session overcurrent trips and repeated drops surface as a free
     /// inline banner on the relevant port card.
@@ -81,9 +87,6 @@ struct ContentView: View {
         // `ScaledHost`, which observes `FontScaleStore` so every SwiftUI
         // surface (popover, dock window, detached Pro windows, welcome,
         // licence) tracks the slider live. No need to re-inject here.
-        .onAppear {
-            isDesktopMac = AppleSmartBatteryReader.read().isDesktopMac
-        }
         .onChange(of: refresh.tick) { _, _ in
             WatcherHub.shared.refreshAll()
         }
@@ -136,7 +139,23 @@ struct ContentView: View {
             // node has no idle representation), so the list is empty whenever
             // the user has no HDMI display connected. Issue #352.
             let builtInDisplayPorts = displayWatcher.builtInDisplayPorts
-            if visiblePorts.isEmpty && builtInDisplayPorts.isEmpty {
+            // Devices behind a Thunderbolt dock or display match no port
+            // (issue #274). Group once: nest under the single connected
+            // Thunderbolt port when unambiguous, else show a flat card.
+            // Grouped here, above the empty-state check, because these cards
+            // (and the desktop-only built-in front-port card, #348) can be the
+            // only thing to show when every port is filtered out: without this
+            // a Mac mini with a drive only in a front port and "hide empty
+            // ports" on would read "nothing connected".
+            let tunnelledGroup = TunnelledDeviceGrouping.group(
+                devices: deviceWatcher.devices,
+                ports: portWatcher.ports,
+                thunderboltSwitches: tbWatcher.switches,
+                isDesktopMac: isDesktopMac
+            )
+            let hasOffPortUSBContent = !tunnelledGroup.devices.isEmpty
+                || !tunnelledGroup.internalHubDevices.isEmpty
+            if visiblePorts.isEmpty && builtInDisplayPorts.isEmpty && !hasOffPortUSBContent {
                 if portWatcher.ports.isEmpty {
                     noPortsState
                 } else {
@@ -153,14 +172,6 @@ struct ContentView: View {
                 let chargingPortKeys = Set(portWatcher.ports.compactMap { port -> String? in
                     PowerSource.hasLiveChargingContract(in: powerWatcher.sources(for: port)) ? port.portKey : nil
                 })
-                // Devices behind a Thunderbolt dock or display match no port
-                // (issue #274). Group once: nest under the single connected
-                // Thunderbolt port when unambiguous, else show a flat card.
-                let tunnelledGroup = TunnelledDeviceGrouping.group(
-                    devices: deviceWatcher.devices,
-                    ports: portWatcher.ports,
-                    thunderboltSwitches: tbWatcher.switches
-                )
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(visiblePorts) { port in
@@ -190,8 +201,24 @@ struct ContentView: View {
                                 connectionDiagnostic: faultTracker.diagnostic(for: port.portKey)
                             )
                         }
-                        if tunnelledGroup.hostPortServiceName == nil, !tunnelledGroup.devices.isEmpty {
-                            OtherUSBDevicesCard(devices: tunnelledGroup.devices)
+                        // Tunnelled devices normally nest inside their host
+                        // port's card (above). Fall back to a flat card when the
+                        // host port can't show them: either it's unknown
+                        // (hostPortServiceName nil) or it was filtered out of
+                        // visiblePorts (e.g. "hide empty ports" dropped a host
+                        // whose connectionActive lagged the TB link). Without the
+                        // visibility check those devices would render nowhere.
+                        let hostPortVisible = tunnelledGroup.hostPortServiceName.map { name in
+                            visiblePorts.contains { $0.serviceName == name }
+                        } ?? false
+                        if !hostPortVisible, !tunnelledGroup.devices.isEmpty {
+                            OtherUSBDevicesCard(devices: tunnelledGroup.devices, kind: .thunderboltTunnelled)
+                        }
+                        // internalHubDevices is already desktop-gated by group(),
+                        // so it is empty on a laptop and this card renders only
+                        // on Mac mini / Studio / Pro (issue #348).
+                        if !tunnelledGroup.internalHubDevices.isEmpty {
+                            OtherUSBDevicesCard(devices: tunnelledGroup.internalHubDevices, kind: .builtInUSBPort)
                         }
                         // Native HDMI ports render after the USB-C / MagSafe
                         // group. They have no PD, no transports, no e-marker,
@@ -448,7 +475,34 @@ struct UpdateBanner: View {
 /// say which one they sit behind (issue #274). The single-device case nests
 /// under that port's card instead, so this card is the ambiguous fallback.
 struct OtherUSBDevicesCard: View {
+    enum Kind {
+        /// Devices behind a TB dock or display (issue #274).
+        case thunderboltTunnelled
+        /// Devices on built-in plain-USB ports behind the Mac's internal hub
+        /// (front USB-C / USB-A on Mac mini, Studio, Pro; issue #348).
+        case builtInUSBPort
+    }
+
     let devices: [USBDevice]
+    let kind: Kind
+
+    private var title: String {
+        switch kind {
+        case .thunderboltTunnelled:
+            return String(localized: "Other USB devices", bundle: _appLocalizedBundle)
+        case .builtInUSBPort:
+            return String(localized: "Built-in USB ports", bundle: _appLocalizedBundle)
+        }
+    }
+
+    private var footer: String {
+        switch kind {
+        case .thunderboltTunnelled:
+            return String(localized: "Reached through a Thunderbolt dock or display, so there's no cable, power, or Thunderbolt data for them.", bundle: _appLocalizedBundle)
+        case .builtInUSBPort:
+            return String(localized: "Plain USB ports behind the Mac's internal hub, so there's no cable, power, or Thunderbolt data for them.", bundle: _appLocalizedBundle)
+        }
+    }
 
     var body: some View {
         let tree = USBDeviceNode.flatten(USBDeviceNode.buildTree(from: devices))
@@ -456,7 +510,7 @@ struct OtherUSBDevicesCard: View {
             HStack(spacing: 8) {
                 Image(systemName: "cable.connector.horizontal")
                     .foregroundStyle(.secondary)
-                Text(String(localized: "Other USB devices", bundle: _appLocalizedBundle))
+                Text(title)
                     .scaledFont(.headline, weight: .semibold)
             }
             ForEach(tree) { node in
@@ -466,7 +520,7 @@ struct OtherUSBDevicesCard: View {
                     .scaledFont(.callout)
                     .padding(.leading, CGFloat(node.depth) * 16)
             }
-            Text(String(localized: "Reached through a Thunderbolt dock or display, so there's no cable, power, or Thunderbolt data for them.", bundle: _appLocalizedBundle))
+            Text(footer)
                 .scaledFont(.caption)
                 .foregroundStyle(.secondary)
         }

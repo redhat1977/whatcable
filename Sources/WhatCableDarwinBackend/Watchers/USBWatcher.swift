@@ -1,11 +1,14 @@
 import Foundation
 import IOKit
 import IOKit.usb
+import os
 import WhatCableCore
 
 @MainActor
 public final class USBWatcher: ObservableObject {
     @Published public private(set) var devices: [USBDevice] = []
+
+    private static let log = Logger(subsystem: "uk.whatcable.whatcable", category: "usb")
 
     private var notifyPort: IONotificationPortRef?
     private var addedIter: io_iterator_t = 0
@@ -135,7 +138,7 @@ public final class USBWatcher: ObservableObject {
             raw[k] = stringify(v)
         }
 
-        let (busIdx, portName, tunnelled) = controllerInfo(for: service, fallback: locationID)
+        let (busIdx, portName, tunnelled, behindInternalHub) = controllerInfo(for: service, fallback: locationID)
 
         // Read the Billboard Capability Descriptor (advertised Alt Modes and
         // their per-mode state) once, here at device-appearance. One-shot
@@ -157,6 +160,7 @@ public final class USBWatcher: ObservableObject {
             busIndex: busIdx,
             controllerPortName: portName,
             isThunderboltTunnelled: tunnelled,
+            isBehindInternalHub: behindInternalHub,
             deviceClass: deviceClass,
             ioClassName: ioClassName,
             billboard: billboard,
@@ -164,7 +168,7 @@ public final class USBWatcher: ObservableObject {
         )
     }
 
-    /// Walks the IOKit parent chain from a USB device collecting two pieces
+    /// Walks the IOKit parent chain from a USB device collecting these pieces
     /// of information:
     ///   - `controllerPortName`: parsed from the first ancestor with a
     ///     `UsbIOPort` property. These are the `usb-drd*-port-hs/ss` nodes
@@ -174,9 +178,15 @@ public final class USBWatcher: ObservableObject {
     ///   - `busIndex`: upper byte of the XHCI controller's `locationID`,
     ///     kept as a fallback for older topologies that don't expose
     ///     `UsbIOPort` (and for the advanced view).
+    ///   - `tunnelled`: the chain runs through `AppleUSBXHCITR`, i.e. the
+    ///     device reached the Mac over a Thunderbolt PCIe tunnel (issue #274).
+    ///   - `behindInternalHub`: the device is on a desktop Mac's plain-USB
+    ///     front port. Detected structurally: the walk reaches a native
+    ///     controller, is not tunnelled, and finds no `UsbIOPort` ancestor
+    ///     (no `Port-USB-C@N` match). See the gate below the loop (issue #348).
     ///
     /// Walks up to 20 hops to handle devices behind deeper hub chains.
-    private func controllerInfo(for service: io_service_t, fallback locationID: UInt32) -> (Int?, String?, Bool) {
+    private func controllerInfo(for service: io_service_t, fallback locationID: UInt32) -> (Int?, String?, Bool, Bool) {
         var current = service
         IOObjectRetain(current)
         defer { IOObjectRelease(current) }
@@ -184,7 +194,17 @@ public final class USBWatcher: ObservableObject {
         var portName: String?
         var bus: Int?
         var tunnelled = false
+        // Set when the walk lands on a *native* Apple Silicon USB host
+        // controller (`AppleT*USBXHCI`), as opposed to the tunnelled
+        // `AppleUSBXHCITR`. Used below to gate the internal-hub classification.
+        var reachedNativeController = false
 
+        // Bound the walk so a malformed or cyclic registry can't loop forever.
+        // The real depth from a USB device to its host controller is small (2-4
+        // hops directly attached; a few more behind chained hubs), so 20 is far
+        // beyond anything observed and just acts as a backstop. Hitting it means
+        // the controller was never found, so `portName` / `reachedNativeController`
+        // stay unset and the device fails safe (not classified as front-port).
         for _ in 0..<20 {
             var parent: io_service_t = 0
             guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS else {
@@ -200,9 +220,19 @@ public final class USBWatcher: ObservableObject {
                     kCFAllocatorDefault,
                     0
                )?.takeRetainedValue(),
-               let portPath = Self.usbIOPortPath(from: raw),
-               let name = Self.portName(fromUSBIOPortPath: portPath) {
-                portName = name
+               let portPath = Self.usbIOPortPath(from: raw) {
+                if let name = Self.portName(fromUSBIOPortPath: portPath) {
+                    portName = name
+                } else {
+                    // Found a `UsbIOPort` ancestor, but its path tail isn't a
+                    // recognised `Port-*` node. Without a port name the device
+                    // is later treated as port-less and, on a desktop, surfaced
+                    // as a front-port device (issue #348). If a future Apple
+                    // Silicon generation renames the port node, this is the
+                    // silent failure mode; log it so it's diagnosable. The path
+                    // is IOKit topology, not PII.
+                    Self.log.debug("UsbIOPort path has no recognised port node: \(portPath, privacy: .public)")
+                }
             }
 
             var classBuf = [CChar](repeating: 0, count: 128)
@@ -222,6 +252,7 @@ public final class USBWatcher: ObservableObject {
                 break
             }
             if className.hasPrefix("AppleT") && className.hasSuffix("USBXHCI") {
+                reachedNativeController = true
                 if let loc = (IORegistryEntryCreateCFProperty(current, "locationID" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? NSNumber)?.uint32Value {
                     bus = Int((loc >> 24) & 0xFF)
                 }
@@ -229,12 +260,45 @@ public final class USBWatcher: ObservableObject {
             }
         }
 
+        let behindInternalHub = Self.classifyBehindInternalHub(
+            reachedNativeController: reachedNativeController,
+            tunnelled: tunnelled,
+            portName: portName
+        )
+
         if bus == nil {
             // Fallback: the device's own locationID upper byte mirrors its
             // controller's locationID upper byte on Apple Silicon.
             bus = Int((locationID >> 24) & 0xFF)
         }
-        return (bus, portName, tunnelled)
+        return (bus, portName, tunnelled, behindInternalHub)
+    }
+
+    /// Structural front-port classification (issue #348). True when all three
+    /// hold:
+    ///   1. `reachedNativeController` -- the parent walk reached a native USB
+    ///      host controller (`AppleT*USBXHCI`), not the Thunderbolt tunnel.
+    ///   2. `!tunnelled` -- the walk did NOT go through `AppleUSBXHCITR`.
+    ///   3. `portName == nil` -- no `UsbIOPort` ancestor, i.e. no `Port-USB-C@N`
+    ///      match.
+    /// On a desktop Mac that means a plain-USB front-panel port. Back-port
+    /// devices always have a `usb-drd*-port-*` (`UsbIOPort`) ancestor, so they
+    /// fail (3). TB-tunnelled devices fail (1)/(2). An external hub on a laptop
+    /// hangs off a real port, so it also has a `UsbIOPort` ancestor and fails
+    /// (3). This structural gate replaces the earlier PID allow-list, which the
+    /// customer-probe corpus showed was both too narrow (missed M1/M2/Studio
+    /// internal-hub PIDs) and ambiguous (the same PIDs appear on external Apple
+    /// hubs).
+    ///
+    /// This is pure structure, not a desktop guarantee: the desktop-only product
+    /// policy is applied downstream in `TunnelledDeviceGrouping.group`. Pure so
+    /// it is unit-testable without IOKit.
+    nonisolated static func classifyBehindInternalHub(
+        reachedNativeController: Bool,
+        tunnelled: Bool,
+        portName: String?
+    ) -> Bool {
+        reachedNativeController && !tunnelled && portName == nil
     }
 
     nonisolated static func busIndex(fromLocationID locationID: UInt32) -> Int {

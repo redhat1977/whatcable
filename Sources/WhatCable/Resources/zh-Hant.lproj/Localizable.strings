@@ -152,6 +152,8 @@
 "Connected over Thunderbolt" = "透過 Thunderbolt 連接";
 "Other USB devices" = "其他 USB 裝置";
 "Reached through a Thunderbolt dock or display, so there's no cable, power, or Thunderbolt data for them." = "透過 Thunderbolt 擴充座或顯示器連接，因此沒有它們的線材、電源或 Thunderbolt 資料。";
+"Built-in USB ports" = "內建 USB 埠";
+"Plain USB ports behind the Mac's internal hub, so there's no cable, power, or Thunderbolt data for them." = "連接到 Mac 內部集線器的普通 USB 埠，因此沒有它們的線材、電源或 Thunderbolt 資料。";
 
 /* Built-in display port card (issue #352). */
 "Display connected" = "已連接顯示器";

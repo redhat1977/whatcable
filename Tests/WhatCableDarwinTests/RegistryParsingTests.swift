@@ -46,6 +46,48 @@ struct RegistryParsingTests {
         #expect(USBWatcher.busIndex(fromLocationID: 0x0300_0000) == 3)
     }
 
+    @Test("Front-port gate: only native + not-tunnelled + no-port-name qualifies (issue #348)")
+    func behindInternalHubStructuralGate() {
+        // The one true case: a device that reached a native controller, is not
+        // tunnelled, and matched no Port-USB-C@N node. This is a desktop
+        // front-panel device.
+        #expect(
+            USBWatcher.classifyBehindInternalHub(
+                reachedNativeController: true, tunnelled: false, portName: nil
+            ) == true
+        )
+
+        // Back-port device: has a UsbIOPort ancestor, so portName is set.
+        #expect(
+            USBWatcher.classifyBehindInternalHub(
+                reachedNativeController: true, tunnelled: false, portName: "Port-USB-C@2"
+            ) == false
+        )
+
+        // Thunderbolt-tunnelled device: reached AppleUSBXHCITR, never a native
+        // controller. Both the tunnelled flag and the missing native controller
+        // independently disqualify it, so the two device sets can't overlap.
+        #expect(
+            USBWatcher.classifyBehindInternalHub(
+                reachedNativeController: false, tunnelled: true, portName: nil
+            ) == false
+        )
+        // Defensive: even if a future walk somehow set both, tunnelled wins.
+        #expect(
+            USBWatcher.classifyBehindInternalHub(
+                reachedNativeController: true, tunnelled: true, portName: nil
+            ) == false
+        )
+
+        // Walk never reached any controller (e.g. the 20-hop bound was hit):
+        // fail safe, do not classify as front-port.
+        #expect(
+            USBWatcher.classifyBehindInternalHub(
+                reachedNativeController: false, tunnelled: false, portName: nil
+            ) == false
+        )
+    }
+
     @Test("PowerSourceWatcher handles built-in parent fields and priority fallback")
     func powerSourceWatcherHandlesBuiltInParentFieldsAndPriorityFallback() {
         let builtIn: [String: Any] = [

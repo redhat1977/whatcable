@@ -35,6 +35,15 @@ public enum JSONFormatter {
             let portSources = sources.filter { $0.canonicallyMatches(port: port) }
             return PowerSource.hasLiveChargingContract(in: portSources) ? port.portKey : nil
         })
+        // Group port-less USB devices once: those reached over a Thunderbolt
+        // tunnel (#274) and those on built-in front-panel ports (#348). Shared
+        // by the two closures below so the grouping runs a single time.
+        let usbGrouping = TunnelledDeviceGrouping.group(
+            devices: usbDevices,
+            ports: ports,
+            thunderboltSwitches: thunderboltSwitches,
+            isDesktopMac: isDesktopMac
+        )
         let output = Output(
             version: AppInfo.version,
             isDesktopMac: isDesktopMac,
@@ -82,15 +91,19 @@ public enum JSONFormatter {
                 )
             },
             otherUSBDevices: {
-                let tunnelled = TunnelledDeviceGrouping.group(
-                    devices: usbDevices,
-                    ports: ports,
-                    thunderboltSwitches: thunderboltSwitches
-                )
-                guard !tunnelled.devices.isEmpty else { return nil }
-                let tree = USBDeviceNode.buildTree(from: tunnelled.devices)
+                guard !usbGrouping.devices.isEmpty else { return nil }
+                let tree = USBDeviceNode.buildTree(from: usbGrouping.devices)
                 return OtherUSBDevicesDTO(
-                    behindPort: tunnelled.hostPortServiceName,
+                    behindPort: usbGrouping.hostPortServiceName,
+                    devices: tree.map { USBDeviceDTO(node: $0) }
+                )
+            }(),
+            builtInUSBDevices: {
+                // internalHubDevices is already desktop-gated by group() above,
+                // so it is empty on a laptop and this block is omitted there.
+                guard !usbGrouping.internalHubDevices.isEmpty else { return nil }
+                let tree = USBDeviceNode.buildTree(from: usbGrouping.internalHubDevices)
+                return BuiltInUSBDevicesDTO(
                     devices: tree.map { USBDeviceDTO(node: $0) }
                 )
             }()
@@ -123,6 +136,11 @@ private struct Output: Codable {
     /// USB devices reached over a Thunderbolt tunnel (behind a dock or display),
     /// which match no physical port (issue #274). Omitted when there are none.
     let otherUSBDevices: OtherUSBDevicesDTO?
+    /// USB devices on built-in plain-USB ports behind the Mac's internal hub
+    /// (front USB-C / USB-A ports on Mac mini, Studio, Pro). These have no
+    /// port-controller silicon, so no cable / PD / Thunderbolt data is
+    /// available for them (issue #348). Omitted when there are none.
+    let builtInUSBDevices: BuiltInUSBDevicesDTO?
 }
 
 private struct BuiltInDisplayPortDTO: Codable {
@@ -146,6 +164,15 @@ private struct BuiltInDisplayPortDTO: Codable {
 /// attributed to that port; key absent = flat/ambiguous.
 private struct OtherUSBDevicesDTO: Codable {
     let behindPort: String?
+    let devices: [USBDeviceDTO]
+}
+
+/// Devices plugged into the Mac's built-in plain-USB ports (front-panel
+/// ports on desktops, hanging off the internal Apple USB hub). No
+/// port-controller silicon backs these ports, so no cable, PD, or
+/// Thunderbolt data is available; the section lists the devices themselves
+/// only. Issue #348.
+private struct BuiltInUSBDevicesDTO: Codable {
     let devices: [USBDeviceDTO]
 }
 

@@ -38,7 +38,8 @@ public enum TextFormatter {
         let tunnelled = TunnelledDeviceGrouping.group(
             devices: usbDevices,
             ports: ports,
-            thunderboltSwitches: thunderboltSwitches
+            thunderboltSwitches: thunderboltSwitches,
+            isDesktopMac: isDesktopMac
         )
         for (i, port) in ports.enumerated() {
             if i > 0 { out += "\n" }
@@ -71,6 +72,13 @@ public enum TextFormatter {
         }
         if tunnelled.hostPortServiceName == nil, !tunnelled.devices.isEmpty {
             out += renderTunnelledDevices(tunnelled.devices, nested: false)
+        }
+        // Front-port / internal-hub devices (issue #348). Rendered as a
+        // separate block from the TB-tunnelled set above so each gets its own
+        // explanatory footer. The set is already desktop-gated by group(), so
+        // it is empty on a laptop and this block renders nothing there.
+        if !tunnelled.internalHubDevices.isEmpty {
+            out += renderInternalHubDevices(tunnelled.internalHubDevices)
         }
         // Native video sockets (today: the built-in HDMI port) come after the
         // USB-C / MagSafe group. They render only when something is plugged
@@ -125,6 +133,26 @@ public enum TextFormatter {
             out += "\(indent)\(prefix) \(name) - \(node.device.speedLabel)\n"
         }
         out += "  " + ANSI.wrap(ANSI.dim, String(localized: "Reached through a Thunderbolt dock or display, so there's no cable, power, or Thunderbolt data for them.", bundle: _coreLocalizedBundle)) + "\n"
+        return out
+    }
+
+    /// Render the internal-hub devices block (issue #348). These are devices
+    /// on the front-panel ports of a Mac mini / Studio / Pro: plain USB ports
+    /// hanging off the internal Apple hub, with no port-controller silicon.
+    /// Always a flat top-level section. Empty string when there are none.
+    private static func renderInternalHubDevices(_ devices: [USBDevice]) -> String {
+        guard !devices.isEmpty else { return "" }
+        var out = "\n"
+        let title = String(localized: "Built-in USB ports", bundle: _coreLocalizedBundle)
+        out += ANSI.wrap(ANSI.bold, title + ":") + "\n"
+        let tree = USBDeviceNode.flatten(USBDeviceNode.buildTree(from: devices))
+        for node in tree {
+            let indent = String(repeating: "  ", count: node.depth + 1)
+            let name = node.device.productName ?? String(localized: "Unknown", bundle: _coreLocalizedBundle)
+            let prefix = node.depth > 0 ? "\u{21B3}" : ANSI.wrap(ANSI.gray, "\u{2022}")
+            out += "\(indent)\(prefix) \(name) - \(node.device.speedLabel)\n"
+        }
+        out += "  " + ANSI.wrap(ANSI.dim, String(localized: "Plain USB ports behind the Mac's internal hub, so there's no cable, power, or Thunderbolt data for them.", bundle: _coreLocalizedBundle)) + "\n"
         return out
     }
 

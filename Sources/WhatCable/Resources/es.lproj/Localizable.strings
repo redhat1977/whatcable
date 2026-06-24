@@ -152,6 +152,8 @@
 "Connected over Thunderbolt" = "Conectado por Thunderbolt";
 "Other USB devices" = "Otros dispositivos USB";
 "Reached through a Thunderbolt dock or display, so there's no cable, power, or Thunderbolt data for them." = "Se accede a ellos a través de un dock o pantalla Thunderbolt, por lo que no hay datos de cable, alimentación ni Thunderbolt.";
+"Built-in USB ports" = "Puertos USB integrados";
+"Plain USB ports behind the Mac's internal hub, so there's no cable, power, or Thunderbolt data for them." = "Puertos USB simples conectados al hub interno del Mac, por lo que no hay datos de cable, alimentación ni Thunderbolt.";
 
 /* Built-in display port card (issue #352). English placeholders, community can refine. */
 "Display connected" = "Display connected";
