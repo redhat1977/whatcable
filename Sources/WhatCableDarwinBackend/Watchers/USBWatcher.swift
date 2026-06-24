@@ -187,8 +187,10 @@ public final class USBWatcher: ObservableObject {
     ///   - `busIndex`: upper byte of the XHCI controller's `locationID`,
     ///     kept as a fallback for older topologies that don't expose
     ///     `UsbIOPort` (and for the advanced view).
-    ///   - `tunnelled`: the chain runs through `AppleUSBXHCITR`, i.e. the
-    ///     device reached the Mac over a Thunderbolt PCIe tunnel (issue #274).
+    ///   - `tunnelled`: the device reached the Mac over a Thunderbolt PCIe
+    ///     tunnel. Either the chain runs through `AppleUSBXHCITR`, the native
+    ///     USB tunnel (issue #274), or through a Thunderbolt 3 dock's own PCIe
+    ///     USB host controller (`isThunderboltDockController`).
     ///   - `behindInternalHub`: the device is on a desktop Mac's plain-USB
     ///     front port. Detected structurally: the walk reaches a native
     ///     controller, is not tunnelled, and finds no `UsbIOPort` ancestor
@@ -267,6 +269,22 @@ public final class USBWatcher: ObservableObject {
                 }
                 break
             }
+            // A Thunderbolt 3 dock (e.g. CalDigit TS3+) brings its own PCIe USB
+            // host controller rather than tunnelling USB natively, so its
+            // downstream devices enumerate under a third-party XHCI driver class
+            // (`AppleUSBXHCIFL1100`, `AppleASMediaUSBXHCI`,
+            // `AppleEmbeddedUSBXHCIASMedia3142`, `AppleUSBXHCIAR`, ...) instead of
+            // `AppleUSBXHCITR`. Those devices still reached the Mac over the
+            // Thunderbolt PCIe tunnel and have no `UsbIOPort` ancestor, so we flag
+            // them tunnelled and stop, exactly like the native-tunnel case above.
+            // Confirmed on TS3+ hardware (m4_macos27.0_c / m1pro_macos26.5.1_i in
+            // the customer-probe corpus). We do not read `locationID` here: a
+            // tunnelled device is attributed to its port by Thunderbolt topology,
+            // not bus index, so `bus` is left to the fallback below.
+            if Self.isThunderboltDockController(className) {
+                tunnelled = true
+                break
+            }
         }
 
         let behindInternalHub = Self.classifyBehindInternalHub(
@@ -308,6 +326,35 @@ public final class USBWatcher: ObservableObject {
         portName: String?
     ) -> Bool {
         reachedNativeController && !tunnelled && portName == nil
+    }
+
+    /// True when `className` is the third-party USB host controller a
+    /// Thunderbolt 3 dock brings over its PCIe tunnel (Fresco Logic
+    /// `AppleUSBXHCIFL1100`, `AppleASMediaUSBXHCI`,
+    /// `AppleEmbeddedUSBXHCIASMedia3142`, `AppleUSBXHCIAR`, and the like), as
+    /// opposed to a native Apple Silicon controller (`AppleT*`), the native USB
+    /// tunnel (`AppleUSBXHCITR`, handled separately), or an Intel built-in
+    /// controller (Intel Macs are unsupported and do not enumerate these in
+    /// practice). The match is structural: any `*USBXHCI` host controller that
+    /// is none of those three is a dock-supplied controller, so its devices
+    /// reached the Mac over Thunderbolt. Validated against every controller
+    /// class name in the customer-probe corpus with zero false positives,
+    /// including the M5 Pro/Max native `AppleT6050USBXHCIAUSS` (excluded by the
+    /// `AppleT` prefix).
+    ///
+    /// ASSUMPTION: every native Apple Silicon USB host controller class starts
+    /// with `AppleT` (true across M1-M5: T8103, T6000, T8112, T8122, T8132,
+    /// T8142, T6050). If a future Apple chip family used a different prefix, its
+    /// native controller would clear all three exclusions and be misread as a
+    /// dock, so its back-port devices would surface under "Other USB devices"
+    /// instead of their port. Revisit when a new silicon generation lands.
+    ///
+    /// Pure so it is unit-testable without IOKit.
+    nonisolated static func isThunderboltDockController(_ className: String) -> Bool {
+        className.contains("USBXHCI")
+            && !className.hasPrefix("AppleT")
+            && !className.hasPrefix("AppleUSBXHCITR")
+            && !className.hasPrefix("AppleIntel")
     }
 
     nonisolated static func busIndex(fromLocationID locationID: UInt32) -> Int {

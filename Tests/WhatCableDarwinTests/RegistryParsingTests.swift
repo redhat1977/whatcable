@@ -88,6 +88,48 @@ struct RegistryParsingTests {
         )
     }
 
+    @Test("Thunderbolt 3 dock controllers are recognised, native/tunnel/Intel are not")
+    func thunderboltDockControllerClassification() {
+        // Third-party USB host controllers a TB3 dock supplies over its PCIe
+        // tunnel. Every distinct class name observed in the customer-probe
+        // corpus must be recognised so its devices surface (TS3+ support case).
+        for dock in [
+            "AppleUSBXHCIFL1100",
+            "AppleEmbeddedUSBXHCIFL1100",
+            "AppleASMediaUSBXHCI",
+            "AppleASMedia1042USBXHCI",
+            "AppleEmbeddedUSBXHCIASMedia3142",
+            "AppleUSBXHCIAR",
+        ] {
+            #expect(USBWatcher.isThunderboltDockController(dock) == true, "\(dock) should be a dock controller")
+        }
+
+        // Native Apple Silicon controllers: excluded by the AppleT prefix. The
+        // M5 Pro/Max name ends in "AUSS", not "USBXHCI", so the suffix-based
+        // native check misses it, but the AppleT prefix still keeps it out of
+        // the dock branch (no false positive on built-in ports).
+        for native in [
+            "AppleT8103USBXHCI", "AppleT6000USBXHCI", "AppleT8112USBXHCI",
+            "AppleT8122USBXHCI", "AppleT8132USBXHCI", "AppleT8142USBXHCI",
+            "AppleT8140USBXHCI", "AppleT6050USBXHCIAUSS",
+        ] {
+            #expect(USBWatcher.isThunderboltDockController(native) == false, "\(native) is native, not a dock")
+        }
+
+        // The native USB tunnel (Studio Display / USB4 dock) is handled by its
+        // own branch above this one, never as a dock controller.
+        #expect(USBWatcher.isThunderboltDockController("AppleUSBXHCITR") == false)
+
+        // Intel built-in controllers: unsupported, and excluded explicitly so a
+        // theoretical enumeration can't be mistaken for a dock.
+        #expect(USBWatcher.isThunderboltDockController("AppleIntelCNLUSBXHCI") == false)
+        #expect(USBWatcher.isThunderboltDockController("AppleIntelICLUSBXHCI") == false)
+
+        // Non-controller class names never match.
+        #expect(USBWatcher.isThunderboltDockController("IOUSBHostDevice") == false)
+        #expect(USBWatcher.isThunderboltDockController("AppleARMIODevice") == false)
+    }
+
     @Test("PowerSourceWatcher handles built-in parent fields and priority fallback")
     func powerSourceWatcherHandlesBuiltInParentFieldsAndPriorityFallback() {
         let builtIn: [String: Any] = [
