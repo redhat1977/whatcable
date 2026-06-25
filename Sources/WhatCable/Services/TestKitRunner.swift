@@ -23,7 +23,6 @@ final class TestKitRunner: ObservableObject {
         "01_walk_pd_tree",
         "03_hpm_deep_dive",
         "04_raw_registry_dump",
-        "16_transient_props",
         "17_deep_property_dump",
         "19_pdo_decode_and_usb3_watch",
         "21_tb_cfplugin_retimer",
