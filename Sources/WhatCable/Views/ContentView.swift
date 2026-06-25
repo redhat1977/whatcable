@@ -423,12 +423,21 @@ struct UpdateBanner: View {
         switch installer.state {
         case .idle:
             Text(String(localized: "You're on \(AppInfo.version)", bundle: _appLocalizedBundle))
-        case .downloading:
-            Text(String(localized: "Downloading…", bundle: _appLocalizedBundle))
-        case .verifying:
-            Text(String(localized: "Verifying signature…", bundle: _appLocalizedBundle))
-        case .installing:
-            Text(String(localized: "Installing, WhatCable will relaunch", bundle: _appLocalizedBundle))
+        case .resolving:
+            Text(String(localized: "Checking for the latest version…", bundle: _appLocalizedBundle))
+        case .downloading, .verifying, .installing:
+            // When the re-check bumped to a newer release, keep saying so for
+            // the whole install (download/verify/install), not just the brief
+            // download phase, so a fast install doesn't hide the note.
+            if installer.didFindNewerVersion {
+                Text(String(localized: "Newer version found, installing it…", bundle: _appLocalizedBundle))
+            } else if case .verifying = installer.state {
+                Text(String(localized: "Verifying signature…", bundle: _appLocalizedBundle))
+            } else if case .installing = installer.state {
+                Text(String(localized: "Installing, WhatCable will relaunch", bundle: _appLocalizedBundle))
+            } else {
+                Text(String(localized: "Downloading…", bundle: _appLocalizedBundle))
+            }
         case .failed(let message):
             Text(String(localized: "Install failed: \(message)", bundle: _appLocalizedBundle)).foregroundStyle(.red)
         case .blocked(let message):
@@ -462,7 +471,7 @@ struct UpdateBanner: View {
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
-        case .downloading, .verifying, .installing:
+        case .resolving, .downloading, .verifying, .installing:
             ProgressView().controlSize(.small)
         }
     }

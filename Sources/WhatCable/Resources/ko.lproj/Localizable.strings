@@ -19,6 +19,8 @@
 "Desktop Mac: charger identity (FedDetails) is not available." = "데스크탑 Mac: 충전기 정보(FedDetails)를 사용할 수 없어요.";
 "Done" = "완료";
 "Downloading…" = "다운로드 중…";
+"Newer version found, installing it…" = "최신 버전을 찾았습니다. 설치 중…";
+"Checking for the latest version…" = "최신 버전 확인 중…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "이 케이블의 E-marker 핑거프린트로 GitHub 이슈 등록";
 "Font size" = "글자 크기";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "개발자가 특정 하드웨어에서 생기는 충전기/케이블 문제를 재현하는 데 도움이 됩니다.";

@@ -19,6 +19,8 @@
 "Desktop Mac: charger identity (FedDetails) is not available." = "Mac de bureau : identité du chargeur (FedDetails) non disponible.";
 "Done" = "OK";
 "Downloading…" = "Téléchargement…";
+"Newer version found, installing it…" = "Version plus récente trouvée, installation…";
+"Checking for the latest version…" = "Recherche de la dernière version…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "Signaler ce câble sur GitHub avec son empreinte e-marker";
 "Font size" = "Taille de police";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "Aide le développeur à reproduire le comportement du chargeur/câble lié à un matériel spécifique.";

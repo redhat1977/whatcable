@@ -42,6 +42,31 @@ final class UpdateChecker: ObservableObject {
         }
     }
 
+    /// Fire a silent check only if the last one is older than `staleAfter` (or
+    /// none has run yet). Called when the menu bar panel opens so the displayed
+    /// "X available" version is current before the user acts, without hitting
+    /// the API on every open. The 6-hour background poll stays the baseline.
+    /// (issue #372: keep the offered version fresh so a user isn't surprised by
+    /// landing on a newer build than the one shown.)
+    func checkIfStale(staleAfter: TimeInterval = 30 * 60) {
+        // Don't re-check mid-install. A check that finds the running version is
+        // newest sets `available = nil`, which would yank the install progress
+        // banner out from under an in-flight install. The install path does its
+        // own pre-download re-check anyway.
+        guard case .idle = Installer.shared.state else { return }
+        if Self.isStale(lastCheck: lastCheck, now: Date(), staleAfter: staleAfter) {
+            check(silent: true)
+        }
+    }
+
+    /// Pure throttle decision: a check is due if none has run yet, or the last
+    /// one is at least `staleAfter` old. Split out so the policy is unit-tested
+    /// without a live network call. Boundary is inclusive (>=).
+    nonisolated static func isStale(lastCheck: Date?, now: Date, staleAfter: TimeInterval) -> Bool {
+        guard let lastCheck else { return true }
+        return now.timeIntervalSince(lastCheck) >= staleAfter
+    }
+
     /// Manually trigger a check. When `silent` is false, surfaces an alert
     /// for the "no update" case so the user gets feedback from the menu item.
     func check(silent: Bool) {
@@ -55,46 +80,37 @@ final class UpdateChecker: ObservableObject {
         isChecking = true
         pendingVisibleCheck = !silent
 
-        var request = URLRequest(url: Self.endpoint)
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("WhatCable/\(AppInfo.version)", forHTTPHeaderField: "User-Agent")
-        request.timeoutInterval = 15
-
-        URLSession.shared.dataTask(with: request) { [weak self] data, _, error in
+        URLSession.shared.dataTask(with: Self.makeReleaseRequest()) { [weak self] data, _, error in
             Task { @MainActor in
                 guard let self else { return }
                 self.isChecking = false
-                self.lastCheck = Date()
                 // If a manual click arrived during the in-flight check, this
                 // gets surfaced. Reset for the next run.
                 let visible = self.pendingVisibleCheck
                 self.pendingVisibleCheck = false
 
                 if let error {
+                    // Don't stamp lastCheck on failure: the panel-open throttle
+                    // uses it to mean "we successfully learned the latest N
+                    // minutes ago", so a failed check should let the next panel
+                    // open retry instead of suppressing checks for 30 minutes
+                    // (e.g. after the Mac comes back online).
                     Self.log.error("Update check failed: \(error.localizedDescription, privacy: .public)")
                     if visible { self.showAlert(title: "Couldn't check for updates", message: error.localizedDescription) }
                     return
                 }
 
-                guard let data,
-                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                      let tag = json["tag_name"] as? String,
-                      let urlString = json["html_url"] as? String,
-                      let url = URL(string: urlString) else {
+                guard let data, let release = Self.parseRelease(from: data) else {
                     if visible { self.showAlert(title: "Couldn't check for updates", message: "Unexpected response from GitHub.") }
                     return
                 }
 
-                let remote = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
-                let notes = json["body"] as? String
-                let downloadURL = (json["assets"] as? [[String: Any]])?
-                    .first(where: { ($0["name"] as? String) == "WhatCable.zip" })
-                    .flatMap { $0["browser_download_url"] as? String }
-                    .flatMap { URL(string: $0) }
-                    .flatMap { Self.isTrustedDownloadURL($0) ? $0 : nil }
+                // Only a successful, parsed response counts as a check for
+                // throttle purposes.
+                self.lastCheck = Date()
 
-                if Self.isNewer(remote: remote, current: AppInfo.version) {
-                    let update = AvailableUpdate(version: remote, url: url, downloadURL: downloadURL, notes: notes)
+                if Self.isNewer(remote: release.version, current: AppInfo.version) {
+                    let update = release
                     self.available = update
                     self.postNotification(update)
                     if visible {
@@ -115,6 +131,59 @@ final class UpdateChecker: ObservableObject {
                 }
             }
         }.resume()
+    }
+
+    /// Fetch the current latest release without touching published state or
+    /// surfacing any UI. Used for the pre-install re-check (issue #372) so a
+    /// release that shipped since the last background poll isn't missed.
+    /// Returns nil on any network or parse error: callers fall back to
+    /// whatever update they already had.
+    func fetchLatestRelease() async -> AvailableUpdate? {
+        do {
+            let (data, _) = try await URLSession.shared.data(for: Self.makeReleaseRequest())
+            return Self.parseRelease(from: data)
+        } catch {
+            Self.log.error("Pre-install update re-check failed: \(error.localizedDescription, privacy: .public)")
+            return nil
+        }
+    }
+
+    /// Build the `releases/latest` request used by both the background poll and
+    /// the pre-install re-check, so the endpoint, headers and timeout live in
+    /// one place.
+    private nonisolated static func makeReleaseRequest() -> URLRequest {
+        var request = URLRequest(url: endpoint)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("WhatCable/\(AppInfo.version)", forHTTPHeaderField: "User-Agent")
+        request.timeoutInterval = 15
+        return request
+    }
+
+    /// Sync the published `available` pointer when a pre-install re-check finds
+    /// a newer release than the one originally surfaced, so the panel row
+    /// reflects the version that's actually being installed.
+    func updateAvailable(to update: AvailableUpdate) {
+        available = update
+    }
+
+    /// Parse GitHub's `releases/latest` JSON into an `AvailableUpdate`. Returns
+    /// nil if the payload is missing the fields we need. Does not compare
+    /// against the running version; callers apply `isNewer` themselves.
+    nonisolated static func parseRelease(from data: Data) -> AvailableUpdate? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tag = json["tag_name"] as? String,
+              let urlString = json["html_url"] as? String,
+              let url = URL(string: urlString) else {
+            return nil
+        }
+        let remote = tag.hasPrefix("v") ? String(tag.dropFirst()) : tag
+        let notes = json["body"] as? String
+        let downloadURL = (json["assets"] as? [[String: Any]])?
+            .first(where: { ($0["name"] as? String) == "WhatCable.zip" })
+            .flatMap { $0["browser_download_url"] as? String }
+            .flatMap { URL(string: $0) }
+            .flatMap { isTrustedDownloadURL($0) ? $0 : nil }
+        return AvailableUpdate(version: remote, url: url, downloadURL: downloadURL, notes: notes)
     }
 
     private func postNotification(_ update: AvailableUpdate) {

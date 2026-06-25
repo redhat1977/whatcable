@@ -19,6 +19,8 @@
 "Display" = "Էկրան";
 "Done" = "Կատարված է";
 "Downloading…" = "Ներբեռնվում է";
+"Newer version found, installing it…" = "Հայտնաբերվեց նոր տարբերակ, տեղադրվում է…";
+"Checking for the latest version…" = "Ստուգվում է վերջին տարբերակը…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "Ստեղծել GitHub issue այս կաբելի e-marker մատնահետքով";
 "Font size" = "Տառատեսակի չափը";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "Օգնում է մշակողին վերարտադրել լիցքավորիչի/կաբելի վարքագիծը՝ կապված կոնկրետ սարքակազմի հետ:";

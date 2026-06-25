@@ -14,6 +14,11 @@ final class Installer: ObservableObject {
 
     enum State: Equatable {
         case idle
+        /// Re-checking GitHub for a newer release than the cached one, just
+        /// before the download starts (issue #372). Kept distinct from
+        /// `downloading` so the UI doesn't claim bytes are moving while we're
+        /// still on the version-check round-trip.
+        case resolving
         case downloading
         case verifying
         case installing
@@ -26,6 +31,11 @@ final class Installer: ObservableObject {
 
     @Published private(set) var state: State = .idle
 
+    /// True when the pre-install re-check swapped in a newer release than the
+    /// version the user clicked Install on, so the banner can say so instead of
+    /// silently changing the number (issue #372: don't surprise the user).
+    @Published private(set) var didFindNewerVersion = false
+
     private init() {}
 
     func install(_ update: AvailableUpdate) {
@@ -33,8 +43,11 @@ final class Installer: ObservableObject {
         // block re-entry, making the click a no-op. Reset to idle so the user
         // can retry after a transient error (e.g. a network blip).
         if case .failed = state { state = .idle }
+        // Clear on every entry, before any early return, so a prior install's
+        // "found newer" flag can never leak into this one.
+        didFindNewerVersion = false
         guard case .idle = state else { return }
-        guard let downloadURL = update.downloadURL else {
+        guard update.downloadURL != nil else {
             state = .failed("No download asset for this release")
             return
         }
@@ -50,9 +63,34 @@ final class Installer: ObservableObject {
             return
         }
 
-        state = .downloading
+        // Holds re-entrancy closed (state is no longer `.idle`) while the async
+        // re-check below runs, so a second Install click can't start a parallel
+        // install.
+        state = .resolving
 
         Task {
+            // Re-check for an even newer release right before downloading. The
+            // background poller only runs every 6 hours, so a release that
+            // shipped since the last poll would otherwise be missed and the
+            // user would install a stale "latest" (issue #372). Falls back to
+            // the update we were handed if the re-check finds nothing newer or
+            // can't reach GitHub.
+            let target = await resolveLatest(update)
+            // If the re-check found a newer release than the one clicked, the
+            // banner says so while it installs (the header version also updates
+            // to match via `updateAvailable`). Mirror `resolveLatest`'s own
+            // swap test rather than a raw string compare.
+            didFindNewerVersion = UpdateChecker.isNewer(remote: target.version, current: update.version)
+            // Defensive: `target` always carries a download asset here (the
+            // outer guard checked `update`, and `resolveLatest` only swaps in a
+            // newer release that has one). Kept as a guard rather than a
+            // force-unwrap so a future change can't crash the installer.
+            guard let downloadURL = target.downloadURL else {
+                state = .failed("No download asset for this release")
+                return
+            }
+            state = .downloading
+
             var workDir: URL?
             do {
                 workDir = try makeWorkDir()
@@ -76,6 +114,29 @@ final class Installer: ObservableObject {
                 state = .failed(error.localizedDescription)
             }
         }
+    }
+
+    /// Ask GitHub for the current latest release immediately before download.
+    /// If a newer one (with a download asset) shipped since the version we were
+    /// handed, install that instead and sync the panel row to match. Falls back
+    /// to the original update if the re-check fails or finds nothing newer.
+    /// This is the fix for issue #372: back-to-back releases meant the cached
+    /// "latest" could already be behind by the time the user clicked Install.
+    ///
+    /// `fetch` is injectable so the fallback logic can be unit-tested without a
+    /// live network call; production callers use the default.
+    func resolveLatest(
+        _ update: AvailableUpdate,
+        fetch: () async -> AvailableUpdate? = { await UpdateChecker.shared.fetchLatestRelease() }
+    ) async -> AvailableUpdate {
+        guard let latest = await fetch(),
+              latest.downloadURL != nil,
+              UpdateChecker.isNewer(remote: latest.version, current: update.version) else {
+            return update
+        }
+        Self.log.info("Pre-install re-check: \(latest.version, privacy: .public) supersedes \(update.version, privacy: .public)")
+        UpdateChecker.shared.updateAvailable(to: latest)
+        return latest
     }
 
     // MARK: - Steps

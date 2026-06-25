@@ -659,6 +659,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             popover.performClose(nil)
         } else {
             Self.refreshSignal.bump()
+            // Refresh the offered update version on open, throttled so it
+            // doesn't hit GitHub on every panel open (issue #372).
+            UpdateChecker.shared.checkIfStale()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }

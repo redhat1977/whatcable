@@ -19,6 +19,8 @@
 "Desktop Mac: charger identity (FedDetails) is not available." = "Galda Mac: lādētāja identitāte (FedDetails) nav pieejama.";
 "Done" = "Gatavs";
 "Downloading…" = "Lejupielādē…";
+"Newer version found, installing it…" = "Atrasta jaunāka versija, notiek instalēšana…";
+"Checking for the latest version…" = "Meklē jaunāko versiju…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "Izveidot GitHub problēmu ar šī kabeļa e-marķiera pirksta nospiedumu";
 "Font size" = "Fonta izmērs";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "Palīdz uzturētājam reproducēt lādētāja / kabeļa uzvedību, kas saistīta ar konkrētu aparatūru.";

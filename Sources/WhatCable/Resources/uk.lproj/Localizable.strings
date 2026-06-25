@@ -19,6 +19,8 @@
 "Desktop Mac: charger identity (FedDetails) is not available." = "Mac (настільний): ідентифікатор зарядного пристрою (FedDetails) недоступний.";
 "Done" = "Готово";
 "Downloading…" = "Завантаження…";
+"Newer version found, installing it…" = "Знайдено новішу версію, триває встановлення…";
+"Checking for the latest version…" = "Пошук найновішої версії…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "Повідомити про кабель через GitHub із відбитком e-marker";
 "Font size" = "Розмір шрифту";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "Допомагає розробнику відтворити поведінку зарядного пристрою або кабелю на конкретному обладнанні.";

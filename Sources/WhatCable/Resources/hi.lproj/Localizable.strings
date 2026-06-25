@@ -19,6 +19,8 @@
 "Desktop Mac: charger identity (FedDetails) is not available." = "डेस्कटॉप Mac: चार्जर पहचान (FedDetails) उपलब्ध नहीं है।";
 "Done" = "हो गया";
 "Downloading…" = "डाउनलोड हो रहा है…";
+"Newer version found, installing it…" = "नया संस्करण मिला, इंस्टॉल किया जा रहा है…";
+"Checking for the latest version…" = "नवीनतम संस्करण की जाँच की जा रही है…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "इस केबल के e-marker फ़िंगरप्रिंट के साथ GitHub issue दर्ज करें";
 "Font size" = "फ़ॉन्ट आकार";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "डेवलपर को विशिष्ट हार्डवेयर से जुड़े चार्जर/केबल व्यवहार को दोहराने में मदद करता है।";

@@ -19,6 +19,8 @@
 "Desktop Mac: charger identity (FedDetails) is not available." = "デスクトップMac: 充電器のID（FedDetails）は利用できません。";
 "Done" = "完了";
 "Downloading…" = "ダウンロード中…";
+"Newer version found, installing it…" = "新しいバージョンが見つかりました。インストールしています…";
+"Checking for the latest version…" = "最新バージョンを確認しています…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "このケーブルのe-markerフィンガープリントでGitHub issueを作成";
 "Font size" = "フォントサイズ";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "開発者が特定のハードウェアに関連する充電器/ケーブルの動作を再現する際に役立ちます。";

@@ -19,6 +19,8 @@
 "Desktop Mac: charger identity (FedDetails) is not available." = "Stasjonær Mac: laderidentitet (FedDetails) er ikke tilgjengelig.";
 "Done" = "Ferdig";
 "Downloading…" = "Laster ned…";
+"Newer version found, installing it…" = "Nyere versjon funnet, installerer…";
+"Checking for the latest version…" = "Ser etter nyeste versjon…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "Opprett et GitHub-issue med denne kabelens e-marker-fingeravtrykk";
 "Font size" = "Skriftstørrelse";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "Hjelper utvikleren med å reprodusere lader-/kabeloppførsel knyttet til spesifikk maskinvare.";

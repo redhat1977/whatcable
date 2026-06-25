@@ -19,6 +19,8 @@
 "Desktop Mac: charger identity (FedDetails) is not available." = "Desktop Mac: opladeridentiteit (FedDetails) is niet beschikbaar.";
 "Done" = "Gereed";
 "Downloading…" = "Downloaden…";
+"Newer version found, installing it…" = "Nieuwere versie gevonden, wordt geïnstalleerd…";
+"Checking for the latest version…" = "Zoeken naar de nieuwste versie…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "Dien een GitHub-melding in met de e-marker-vingerafdruk van deze kabel";
 "Font size" = "Lettergrootte";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "Helpt de beheerder gedrag van oplader of kabel te reproduceren op specifieke hardware.";
