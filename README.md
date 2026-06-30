@@ -51,7 +51,7 @@ Click the **gear icon** in the popover header to open Settings, where you can:
 - Get notifications when cables are connected or disconnected
 - Contribute anonymised port and power diagnostics to improve hardware coverage (opt-in, manual)
 
-Right-click the menu bar icon for **Refresh**, a **Keep window open** toggle (handy for screenshots and demos), **Settings…**, **Contribute Diagnostic Data…**, **Check for Updates…**, **About**, **WhatCable on GitHub**, and **Quit**.
+Right-click the menu bar icon for **Refresh**, a **Keep window open** toggle (handy for screenshots and demos), and **Settings…**. The Pro screens (**Power Monitor**, **Negotiation Diagnostics**, **Display Diagnostics**, **Saved Cables**) and **Licence…** live here too. Below those: **Check for Updates…**, **Contribute Diagnostic Data…**, **About**, **WhatCable on GitHub**, and **Quit**.
 
 ## WhatCable Pro
 
@@ -237,7 +237,7 @@ cp .env.example .env
 - **Cable e-marker info only appears for cables that carry one.** Most USB-C cables under 60 W are unmarked. Any Thunderbolt / USB4 cable, any 5 A / 100 W+ cable, and most quality data cables will be e-marked.
 - **Some cables only reveal their e-marker once something is plugged in at the other end.** The chip in the cable's plug runs off VCONN (a small power rail your Mac feeds into the cable) and only answers when the host issues a "Discover Identity" message. With nothing attached, some Macs read the e-marker straight away, others wait until they see a real partner to negotiate with. If a cable shows up as basic when bare, plug a charger, dock, or device into the far end and check again.
 - **WhatCable reads from the Mac's USB-C port, the connected device or charger, and the cable itself.** It cross-checks what each part of the chain reports, so if a cable claims high specs but the negotiated result is lower, you'll see where the mismatch is. That said, software cannot verify what's physically inside the jacket. If a cable's e-marker chip claims 240W / 40 Gbps but the wiring can't deliver, the chip is lying, not WhatCable. The trust-signals card flags a small set of internal-consistency tells (zero VID, reserved bit patterns in the Cable VDO, a VID not in the USB-IF list). These are common in budget cables and don't necessarily mean anything is wrong. They're informational, not a verdict.
-- **Desktop front USB-C ports don't appear.** On Apple Silicon desktops (Mac mini, Studio), the front USB-C ports are plain USB behind an internal hub, not full USB-C ports with their own controller like the rear Thunderbolt ports. The Mac exposes no cable, power, or PD data for them, so there's nothing for WhatCable to read. The rear Thunderbolt ports work fully.
+- **Desktop front USB-C ports show devices, but no cable detail.** On Apple Silicon desktops (Mac mini, Studio), the front USB-C ports are plain USB behind an internal hub, not full USB-C ports with their own controller like the rear Thunderbolt ports. Anything plugged into them now appears under a **Built-in USB ports** section, but the Mac exposes no cable, power, or PD data for them, so there's no e-marker or charging detail to show. The rear Thunderbolt ports work fully.
 - **PD spec coverage:** the decoder is aligned to USB-PD R3.2 V1.2 (March 2026). Earlier 3.0 / 3.1 cables work fine.
 - **Vendor name lookup uses a bundled database** (thousands of USB-IF entries plus the community usb.ids list). VIDs assigned after the bundled snapshot will show as "Unregistered / unknown" and trip a trust-signal flag until the database is refreshed.
 
@@ -251,7 +251,7 @@ WhatCable reads USB-C port state directly from IOKit on your Mac. All of that ha
 
 **Cable reports:** If you use the "Report this cable" button on an e-marked cable, WhatCable builds a pre-filled GitHub issue containing the cable's vendor ID, product ID, and capability flags (VDOs). Your browser opens with that data in the issue form. Nothing is submitted until you click the button in GitHub yourself. Once submitted, the issue is public.
 
-**Update checks:** WhatCable periodically checks the GitHub Releases API to see if a newer version is available. No personal data or hardware info is included in that request.
+**Update checks:** WhatCable checks the GitHub Releases API about once every six hours to see if a newer version is available. No personal data or hardware info is included in that request.
 
 **Diagnostic data:** Settings has an opt-in **Contribute Diagnostic Data** button. When you press it, WhatCable collects anonymised USB-C port and power IOKit details from your Mac and submits them to help improve hardware coverage. It only runs when you click it; nothing is collected or sent unless you choose to.
 
