@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import Combine
 
@@ -34,15 +35,78 @@ public final class FontScaleStore: ObservableObject {
     private init() {}
 }
 
-/// Wraps any view, observing `FontScaleStore.shared` and re-applying the
-/// `\.fontScale` environment whenever the Settings slider changes.
+/// Single source of truth for the window-opacity slider, observed by
+/// `ScaledHost`. 1.0 is fully opaque (the default); lower values make every
+/// surface see-through. The app target keeps this in sync with
+/// `AppSettings.shared.uiOpacity`.
+@MainActor
+public final class OpacityStore: ObservableObject {
+    public static let shared = OpacityStore()
+    @Published public var opacity: Double = 1.0
+    private init() {}
+}
+
+/// Sets the host window's `alphaValue` so the whole surface (popover, window,
+/// detached Pro window, sheet, etc.) goes translucent. Lives in a `.background`
+/// of `ScaledHost`, so it rides along on every surface without touching any
+/// window-construction call site.
+///
+/// We fade the whole window rather than just its background: macOS vibrancy
+/// (the popover's frosted backdrop) has no 0-100% knob, and making the window
+/// non-opaque doesn't reveal the desktop because the popover draws its own
+/// backdrop inside the window. Whole-window alpha is the one approach that
+/// visibly works on the popover.
+///
+/// `NSViewRepresentable` is the bridge that lets a SwiftUI view reach the
+/// underlying AppKit window, which is where `alphaValue` actually lives;
+/// SwiftUI has no native "set my window's opacity" modifier.
+private struct WindowAlphaApplier: NSViewRepresentable {
+    var opacity: Double
+
+    func makeNSView(context: Context) -> WindowAlphaView {
+        let view = WindowAlphaView()
+        view.alpha = opacity
+        return view
+    }
+
+    func updateNSView(_ nsView: WindowAlphaView, context: Context) {
+        nsView.alpha = opacity
+    }
+}
+
+/// Backing view for `WindowAlphaApplier`. Applies the alpha both when the
+/// value changes and when it first joins a window: the popover's backing
+/// window doesn't exist until the popover is shown, and re-shows re-add the
+/// hosting view, so `viewDidMoveToWindow` is the reliable hook.
+private final class WindowAlphaView: NSView {
+    var alpha: Double = 1.0 {
+        didSet { applyAlpha() }
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        applyAlpha()
+    }
+
+    private func applyAlpha() {
+        // Clamp defensively: alphaValue is only meaningful in 0...1, and the
+        // store is public so a stray writer can't make a window vanish.
+        window?.alphaValue = CGFloat(min(max(alpha, 0), 1))
+    }
+}
+
+/// Wraps any view, observing `FontScaleStore.shared` and `OpacityStore.shared`
+/// and re-applying the `\.fontScale` environment and window opacity whenever
+/// the Settings sliders change.
 ///
 /// Use at the root of every SwiftUI surface that is hosted in its own
 /// `NSHostingController` (popover, detached Pro windows, welcome, licence
-/// panel). Without this wrapper those hosts read the default scale (1.0)
-/// and ignore the slider entirely.
+/// panel) and on each `.sheet` body (sheets are separate child windows that
+/// the parent's wrapper doesn't cover). Without this wrapper those hosts read
+/// the defaults (scale 1.0, opacity 1.0) and ignore the sliders entirely.
 public struct ScaledHost<Content: View>: View {
     @ObservedObject private var store = FontScaleStore.shared
+    @ObservedObject private var opacityStore = OpacityStore.shared
     private let content: Content
 
     public init(@ViewBuilder content: () -> Content) {
@@ -52,6 +116,7 @@ public struct ScaledHost<Content: View>: View {
     public var body: some View {
         content
             .environment(\.fontScale, store.fontScale)
+            .background(WindowAlphaApplier(opacity: opacityStore.opacity))
     }
 }
 

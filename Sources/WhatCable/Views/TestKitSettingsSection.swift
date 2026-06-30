@@ -23,11 +23,16 @@ struct TestKitSettingsSection: View {
             Spacer(minLength: 0)
         }
         .sheet(isPresented: $showingConsent) {
-            TestKitConsentView {
-                showingConsent = false
-                runner.run()
-            } onCancel: {
-                showingConsent = false
+            // Wrapped so the sheet's own window picks up the opacity slider too
+            // (sheets are separate child windows, not covered by the parent's
+            // ScaledHost).
+            ScaledHost {
+                TestKitConsentView {
+                    showingConsent = false
+                    runner.run()
+                } onCancel: {
+                    showingConsent = false
+                }
             }
         }
         .onReceive(refreshSignal.$showTestKitConsent) { show in

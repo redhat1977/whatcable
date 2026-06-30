@@ -23,6 +23,7 @@
 "Checking for the latest version…" = "Buscando la última versión…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "Abrir un issue en GitHub con la huella e-marker de este cable";
 "Font size" = "Tamaño de fuente";
+"Opacity" = "Opacidad";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "Ayuda al desarrollador a reproducir el comportamiento del cargador/cable vinculado a un hardware específico.";
 "Hide empty ports" = "Ocultar puertos vacíos";
 "Host (%@)" = "Host (%@)";

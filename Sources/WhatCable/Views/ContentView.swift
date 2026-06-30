@@ -811,8 +811,13 @@ struct PortCard: View {
         .padding(14)
         .background(.quaternary.opacity(0.4), in: RoundedRectangle(cornerRadius: 10))
         .sheet(item: $reportingCable) { cable in
-            CableReportSheet(cableIdentity: cable, cioCapability: cioCapability) {
-                reportingCable = nil
+            // Wrapped so the sheet's own window picks up the opacity slider too
+            // (sheets are separate child windows, not covered by the parent's
+            // ScaledHost).
+            ScaledHost {
+                CableReportSheet(cableIdentity: cable, cioCapability: cioCapability) {
+                    reportingCable = nil
+                }
             }
         }
     }

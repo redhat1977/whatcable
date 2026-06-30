@@ -76,6 +76,26 @@ struct SettingsForm: View {
                     }
                 }
 
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(String(localized: "Opacity", bundle: _appLocalizedBundle))
+                            .scaledFont(.body)
+                        Spacer()
+                        Text(verbatim: "\(Int((settings.uiOpacity * 100).rounded()))%")
+                            .scaledFont(.body, monospacedDigit: true)
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack(spacing: 8) {
+                        Image(systemName: "circle.dotted")
+                            .scaledFont(.body)
+                            .foregroundStyle(.secondary)
+                        Slider(value: $settings.uiOpacity, in: AppSettings.opacityRange, step: 0.05)
+                        Image(systemName: "circle.fill")
+                            .scaledFont(.body)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 LabeledContent {
                     MenuBarIconPicker(selection: $settings.menuBarIcon)
                 } label: {

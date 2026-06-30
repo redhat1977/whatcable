@@ -27,6 +27,7 @@ final class AppSettings: ObservableObject {
         static let useMenuBarMode = "useMenuBarMode"
         static let showTechnicalDetails = "showTechnicalDetails"
         static let fontSize = "fontSize"
+        static let uiOpacity = "uiOpacity"
         static let menuBarIcon = "menuBarIcon"
         static let preferredLanguage = "preferredLanguage"
         static let testKitLastRunVersion = "testKitLastRunVersion"
@@ -118,6 +119,23 @@ final class AppSettings: ObservableObject {
             // detached Pro windows, licence panel, welcome) tracks the slider
             // live, not just the popover.
             FontScaleStore.shared.fontScale = fontSize
+        }
+    }
+
+    /// Window opacity for every surface. 1.0 is fully opaque (the default);
+    /// the slider lets users pick down to 0.5. Floored at 0.5 so the content
+    /// never becomes unreadable.
+    static let opacityRange: ClosedRange<Double> = 0.5...1.0
+
+    @Published var uiOpacity: Double {
+        didSet {
+            let clamped = min(max(uiOpacity, Self.opacityRange.lowerBound), Self.opacityRange.upperBound)
+            if clamped != uiOpacity { uiOpacity = clamped; return }
+            guard uiOpacity != oldValue else { return }
+            UserDefaults.standard.set(uiOpacity, forKey: Keys.uiOpacity)
+            // Mirror to the AppKit store so every surface (popover, detached
+            // Pro windows, licence panel, welcome) tracks the slider live.
+            OpacityStore.shared.opacity = uiOpacity
         }
     }
 
@@ -223,6 +241,13 @@ final class AppSettings: ObservableObject {
         // already gets the right scale, before the user ever touches the
         // slider. didSet runs only on subsequent changes.
         FontScaleStore.shared.fontScale = initialScale
+        let storedOpacity = UserDefaults.standard.double(forKey: Keys.uiOpacity)
+        let rawOpacity = storedOpacity > 0 ? storedOpacity : 1.0
+        let initialOpacity = min(max(rawOpacity, Self.opacityRange.lowerBound), Self.opacityRange.upperBound)
+        self.uiOpacity = initialOpacity
+        // Seed the AppKit-side store so the first surface opens at the saved
+        // opacity, before the user touches the slider.
+        OpacityStore.shared.opacity = initialOpacity
         let savedIcon = UserDefaults.standard.string(forKey: Keys.menuBarIcon) ?? Self.defaultMenuBarIcon
         self.menuBarIcon = Self.validatedMenuBarIcon(savedIcon)
         self.showChargingWatts = UserDefaults.standard.bool(forKey: Keys.showChargingWatts)

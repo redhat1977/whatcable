@@ -23,6 +23,7 @@
 "Checking for the latest version…" = "Meklē jaunāko versiju…";
 "File a GitHub issue with this cable's e-marker fingerprint" = "Izveidot GitHub problēmu ar šī kabeļa e-marķiera pirksta nospiedumu";
 "Font size" = "Fonta izmērs";
+"Opacity" = "Necaurspīdīgums";
 "Helps the maintainer reproduce charger / cable behavior tied to specific hardware." = "Palīdz uzturētājam reproducēt lādētāja / kabeļa uzvedību, kas saistīta ar konkrētu aparatūru.";
 "Hide empty ports" = "Slēpt tukšos portus";
 "Host (%@)" = "Resursdators (%@)";
