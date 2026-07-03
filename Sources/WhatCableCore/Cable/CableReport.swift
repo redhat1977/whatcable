@@ -1,5 +1,4 @@
 import Foundation
-import Darwin
 
 /// Builds the data and pre-filled GitHub issue URL behind the "Report this
 /// cable" feature. Pure data assembly. The app and the CLI both render this
@@ -93,17 +92,14 @@ public enum CableReport {
             self.macOSVersion = macOSVersion
         }
 
-        public static func current() -> SystemInfo {
-            SystemInfo(macModel: fetchMacModel(), macOSVersion: fetchOSVersion())
-        }
-
-        private static func fetchMacModel() -> String {
-            var size = 0
-            sysctlbyname("hw.model", nil, &size, nil, 0)
-            guard size > 0 else { return "unknown" }
-            var buf = [CChar](repeating: 0, count: size)
-            guard sysctlbyname("hw.model", &buf, &size, nil, 0) == 0 else { return "unknown" }
-            return String(cString: buf)
+        /// Builds a `SystemInfo` for a report. `macModel` is passed in rather
+        /// than read here: getting the Mac model string needs `sysctlbyname`,
+        /// a Darwin-only call, and Core stays free of platform imports (see
+        /// CLAUDE.md). Callers fetch it via `DarwinSystemInfo.fetchMacModel()`
+        /// in `WhatCableDarwinBackend` and pass it in. `macOSVersion` stays
+        /// here because `ProcessInfo` is portable Foundation, not Darwin-only.
+        public static func current(macModel: String) -> SystemInfo {
+            SystemInfo(macModel: macModel, macOSVersion: fetchOSVersion())
         }
 
         private static func fetchOSVersion() -> String {
@@ -117,6 +113,7 @@ public enum CableReport {
     public static func payload(
         for identity: USBPDSOP,
         includeSystemInfo: Bool = false,
+        macModel: String = "unknown",
         appVersion: String = AppInfo.version,
         cioCapability: CIOCableCapability? = nil
     ) -> Payload? {
@@ -124,7 +121,7 @@ public enum CableReport {
         guard isCable else { return nil }
         return Payload(
             cable: CableFingerprint(identity: identity),
-            system: includeSystemInfo ? SystemInfo.current() : nil,
+            system: includeSystemInfo ? SystemInfo.current(macModel: macModel) : nil,
             appVersion: appVersion,
             cioCapability: cioCapability
         )

@@ -80,6 +80,26 @@ struct CableReportTests {
         #expect(md.contains("not included by reporter"))
     }
 
+    @Test("Payload carries the injected Mac model, not a sysctl lookup")
+    func payloadCarriesInjectedMacModel() {
+        // CableReport doesn't call sysctl itself anymore (that's a
+        // Darwin-only API, out of bounds for Core). Callers fetch the model
+        // via WhatCableDarwinBackend and pass it in; this checks it flows
+        // through untouched.
+        let payload = CableReport.payload(
+            for: cableIdentity(),
+            includeSystemInfo: true,
+            macModel: "Mac16,1"
+        )!
+        #expect(payload.system?.macModel == "Mac16,1")
+    }
+
+    @Test("Payload defaults Mac model to unknown when the caller doesn't provide one")
+    func payloadDefaultsMacModelToUnknown() {
+        let payload = CableReport.payload(for: cableIdentity(), includeSystemInfo: true)!
+        #expect(payload.system?.macModel == "unknown")
+    }
+
     @Test("Markdown includes system info when provided")
     func markdownIncludesSystemInfoWhenProvided() {
         let payload = CableReport.Payload(

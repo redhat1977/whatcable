@@ -8,6 +8,14 @@ import WhatCablePlugins
 struct WhatCableCLI {
     @MainActor
     static func main() async {
+        // Tell Core whether stdout is a real terminal, so ANSI.isEnabled
+        // knows whether to color output. Must happen before any printing:
+        // Core can't check this itself (isatty is Darwin-only), so this is
+        // the one place the CLI answers on Core's behalf. isatty(3) returns
+        // 0 (false) when stdout is piped or redirected to a file, which is
+        // exactly when colour should stay off.
+        ANSI.configure(isTTY: isatty(fileno(stdout)) != 0)
+
         bootstrapPlugins(registry: .shared)
 
         let args = Array(CommandLine.arguments.dropFirst())
@@ -344,6 +352,7 @@ private func printCableReports(identities: [USBPDSOP], cioCapabilities: [CIOCabl
         print("(Most cables under 60W don't carry an e-marker, so there's nothing to report on those.)")
         return
     }
+    let macModel = DarwinSystemInfo.fetchMacModel()
     for (i, identity) in cables.enumerated() {
         if cables.count > 1 {
             print("=== Cable \(i + 1) of \(cables.count) ===")
@@ -354,6 +363,7 @@ private func printCableReports(identities: [USBPDSOP], cioCapabilities: [CIOCabl
         guard let payload = CableReport.payload(
             for: identity,
             includeSystemInfo: true,
+            macModel: macModel,
             cioCapability: cio
         ) else { continue }
         print(payload.markdown)

@@ -2,6 +2,7 @@ import SwiftUI
 import AppKit
 import WhatCableCore
 import WhatCableAppKit
+import WhatCableDarwinBackend
 
 /// Confirmation sheet shown before sending the user to GitHub to file a
 /// cable report. Lets them preview the exact payload that will be embedded
@@ -16,7 +17,16 @@ struct CableReportSheet: View {
     @State private var includeSystemInfo: Bool = false
 
     private var payload: CableReport.Payload? {
-        CableReport.payload(for: cableIdentity, includeSystemInfo: includeSystemInfo, cioCapability: cioCapability)
+        // Only fetch the Mac model when the toggle is on, matching the old
+        // behavior where the sysctl call inside SystemInfo.current() only
+        // ran if includeSystemInfo was true.
+        let macModel = includeSystemInfo ? DarwinSystemInfo.fetchMacModel() : "unknown"
+        return CableReport.payload(
+            for: cableIdentity,
+            includeSystemInfo: includeSystemInfo,
+            macModel: macModel,
+            cioCapability: cioCapability
+        )
     }
 
     var body: some View {
