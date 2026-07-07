@@ -602,6 +602,20 @@
     "xid" : "0x2600"
   },
   {
+    "brand" : "Apple Thunderbolt cable variant, seen with CalDigit devices (test-kit corpus)",
+    "cableVDO" : "0x4368F8DB",
+    "issueNum" : "",
+    "issueURL" : "",
+    "pid" : "0x7203",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB4 Gen 3 (40 Gbps, Thunderbolt 4 class)",
+    "type" : "active",
+    "vendor" : "Apple",
+    "vid" : "0x05AC",
+    "xid" : "none"
+  },
+  {
     "brand" : "Apple Thunderbolt 4 Pro Cable (1.8 m)",
     "cableVDO" : "0x4368F8DB",
     "issueNum" : "#333",
@@ -630,6 +644,20 @@
     "xid" : "0x2600"
   },
   {
+    "brand" : "Apple Thunderbolt cable, likely Studio Display captive cable (test-kit corpus, seen alongside a Studio Display device on 3 of 8 machines)",
+    "cableVDO" : "0x4368F8DB",
+    "issueNum" : "",
+    "issueURL" : "",
+    "pid" : "0x7209",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB4 Gen 3 (40 Gbps, Thunderbolt 4 class)",
+    "type" : "active",
+    "vendor" : "Apple",
+    "vid" : "0x05AC",
+    "xid" : "none"
+  },
+  {
     "brand" : "Apple Thunderbolt 5 cable 1 m",
     "cableVDO" : "0x110A2644",
     "issueNum" : "#93",
@@ -655,6 +683,20 @@
     "type" : "passive",
     "vendor" : "Joinsoon Electronics Mfg. Co., Ltd.",
     "vid" : "0x060F",
+    "xid" : "none"
+  },
+  {
+    "brand" : "Chant Sincere OEM cable, seen with Lenovo and Dell devices (test-kit corpus)",
+    "cableVDO" : "0x00082042",
+    "issueNum" : "",
+    "issueURL" : "",
+    "pid" : "0xC8F1",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB 3.2 Gen 2 (10 Gbps)",
+    "type" : "passive",
+    "vendor" : "Chant Sincere Co., Ltd",
+    "vid" : "0x0C62",
     "xid" : "none"
   },
   {
@@ -820,6 +862,34 @@
     "power" : "5 A \/ 20 V (100 W)",
     "registered" : true,
     "speed" : "USB 3.2 Gen 2 (10 Gbps)",
+    "type" : "passive",
+    "vendor" : "Sumitomo Electric Ind., Ltd., Optical Comm. R&D Lab",
+    "vid" : "0x20C2",
+    "xid" : "none"
+  },
+  {
+    "brand" : "Sumitomo Electric OEM Thunderbolt cable (test-kit corpus)",
+    "cableVDO" : "0x460A2643",
+    "issueNum" : "",
+    "issueURL" : "",
+    "pid" : "0x0714",
+    "power" : "5 A \/ 50 V (240 W)",
+    "registered" : true,
+    "speed" : "USB4 Gen 3 (40 Gbps, Thunderbolt 4 class)",
+    "type" : "passive",
+    "vendor" : "Sumitomo Electric Ind., Ltd., Optical Comm. R&D Lab",
+    "vid" : "0x20C2",
+    "xid" : "none"
+  },
+  {
+    "brand" : "Sumitomo Electric OEM Thunderbolt cable, seen with CalDigit devices (test-kit corpus)",
+    "cableVDO" : "0x45082043",
+    "issueNum" : "",
+    "issueURL" : "",
+    "pid" : "0x080F",
+    "power" : "5 A \/ 20 V (100 W)",
+    "registered" : true,
+    "speed" : "USB4 Gen 3 (40 Gbps, Thunderbolt 4 class)",
     "type" : "passive",
     "vendor" : "Sumitomo Electric Ind., Ltd., Optical Comm. R&D Lab",
     "vid" : "0x20C2",

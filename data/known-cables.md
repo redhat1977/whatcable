@@ -130,6 +130,11 @@ hand-maintained markdown table; format may change once the consumer exists.
 | Elecom Thunderbolt 5 / USB4 80 Gbps cable, Osaka pop-up shop | `0x0214` | `0x4011` | `0x110A2644` | Unregistered | `0x303E` | USB4 Gen 4 (80 Gbps, Thunderbolt 5 class) | 5 A / 50 V (240 W) | passive | [#396](https://github.com/darrylmorley/whatcable/issues/396) |
 | Apple USB-C Charging Cable, shipped with M1 MacBook Air | `0x05AC` | `0x1781` | `0xA1084050` | Apple | `0xA26` | USB 2.0 (480 Mbps) | 5 A / 20 V (100 W) | passive | [#397](https://github.com/darrylmorley/whatcable/issues/397) |
 | OWC Thunderbolt 4 cable, 28 in, Amazon | `0x2B1D` | `0x152A` | `0x110A2643` | Lintes Technology Co., Ltd. | none | USB4 Gen 3 (40 Gbps, Thunderbolt 4 class) | 5 A / 50 V (240 W) | passive | [#388](https://github.com/darrylmorley/whatcable/issues/388) |
+| Apple Thunderbolt cable, likely Studio Display captive cable (test-kit corpus, seen alongside a Studio Display device on 3 of 8 machines) | `0x05AC` | `0x7209` | `0x4368F8DB` | Apple | none | USB4 Gen 3 (40 Gbps, Thunderbolt 4 class) | 5 A / 20 V (100 W) | active | Test-kit corpus, no GitHub issue filed |
+| Sumitomo Electric OEM Thunderbolt cable, seen with CalDigit devices (test-kit corpus) | `0x20C2` | `0x080F` | `0x45082043` | Sumitomo Electric Ind., Ltd., Optical Comm. R&D Lab | none | USB4 Gen 3 (40 Gbps, Thunderbolt 4 class) | 5 A / 20 V (100 W) | passive | Test-kit corpus, no GitHub issue filed |
+| Sumitomo Electric OEM Thunderbolt cable (test-kit corpus) | `0x20C2` | `0x0714` | `0x460A2643` | Sumitomo Electric Ind., Ltd., Optical Comm. R&D Lab | none | USB4 Gen 3 (40 Gbps, Thunderbolt 4 class) | 5 A / 50 V (240 W) | passive | Test-kit corpus, no GitHub issue filed |
+| Apple Thunderbolt cable variant, seen with CalDigit devices (test-kit corpus) | `0x05AC` | `0x7203` | `0x4368F8DB` | Apple | none | USB4 Gen 3 (40 Gbps, Thunderbolt 4 class) | 5 A / 20 V (100 W) | active | Test-kit corpus, no GitHub issue filed |
+| Chant Sincere OEM cable, seen with Lenovo and Dell devices (test-kit corpus) | `0x0C62` | `0xC8F1` | `0x00082042` | Chant Sincere Co., Ltd | none | USB 3.2 Gen 2 (10 Gbps) | 5 A / 20 V (100 W) | passive | Test-kit corpus, no GitHub issue filed |
 
 Sorted by VID. The zeroed-fingerprint entry is parked at the bottom because it
 is identity-less.
