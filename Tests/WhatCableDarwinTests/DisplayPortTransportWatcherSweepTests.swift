@@ -12,15 +12,15 @@ import Testing
 /// Two probe sources are used:
 ///
 /// - **Probe 17** (`17_deep_property_dump.json`): flat `--- IOPortTransportStateDisplayPort[N] ---`
-///   blocks, `KEY: VALUE` colon format, 2-space indent. Covers 184 folders / 285 blocks
-///   across all chip generations, including inactive ports and HDMI-tunnelled displays.
-///   Best breadth.
+///   blocks, `KEY: VALUE` colon format, 2-space indent. Covers 312 folders / 494 blocks
+///   (as of 2026-07; see corpus.jsonl for the current corpus size) across all chip
+///   generations, including inactive ports and HDMI-tunnelled displays. Best breadth.
 ///
 /// - **Probe 33** (`33_displayport_capability.json`): dedicated DisplayPort probe,
 ///   `=== DisplayPort node [N] ===` blocks, `KEY = VALUE` equals format, 2-space indent.
-///   80 folders / 97 blocks, 51 with an active display. Has `Metadata.KEY` flat sub-keys
-///   so `ProductName` and `ManufacturerName` are accessible without a nested dict. Best
-///   fidelity for monitor identity fields.
+///   204 folders / 322 blocks, 160 with an active display (as of 2026-07). Has
+///   `Metadata.KEY` flat sub-keys so `ProductName` and `ManufacturerName` are accessible
+///   without a nested dict. Best fidelity for monitor identity fields.
 ///
 /// Fresh clones without the corpus trivially pass: probe 17 and 33 are gitignored raw
 /// data (only `01_walk_pd_tree.json` is committed), so the missing-file guards return
@@ -282,11 +282,12 @@ struct DisplayPortTransportWatcherSweepTests {
         #expect(modelsTotal == blocksTotal,
             "Expected \(blocksTotal) DisplayPortUpdate models (no gate); got \(modelsTotal)")
 
-        // Calibrated against full corpus: 184 folders, 285 blocks.
+        // Actual 494 blocks across 312 folders, as of 2026-07. Floor set to
+        // ~85% of actual (420), not the stale 200 (40% of actual).
         // Guard skipped on a fresh clone that hasn't fetched raw probes from KV.
         if Self.hasDPProbeFiles() && blocksTotal > 0 {
-            #expect(blocksTotal >= 200,
-                "Expected at least 200 DP blocks in probe 17; got \(blocksTotal) -- were raw probes deleted?")
+            #expect(blocksTotal >= 420,
+                "Expected at least 420 DP blocks in probe 17; got \(blocksTotal) -- were raw probes deleted?")
         }
     }
 
@@ -388,9 +389,10 @@ struct DisplayPortTransportWatcherSweepTests {
             }
         }
 
+        // Actual 494 verifications as of 2026-07. Floor set to ~85% of actual.
         if Self.hasDPProbeFiles() {
-            #expect(verified >= 150,
-                "Expected at least 150 probe-17 field verifications; got \(verified)")
+            #expect(verified >= 420,
+                "Expected at least 420 probe-17 field verifications; got \(verified)")
         }
     }
 
@@ -446,11 +448,11 @@ struct DisplayPortTransportWatcherSweepTests {
             }
         }
 
-        // 142 active blocks in probe 17; most should have monitor info.
-        // Conservatively require at least half to have a populated monitor struct.
+        // Actual 239 active blocks in probe 17, all 239 with monitor info, as of
+        // 2026-07. Floor set to ~88% of actual (210), not the stale 100 (42%).
         if Self.hasDPProbeFiles() && activeBlocks > 0 {
-            #expect(activeBlocks >= 100,
-                "Expected at least 100 active DP blocks in probe 17; got \(activeBlocks)")
+            #expect(activeBlocks >= 210,
+                "Expected at least 210 active DP blocks in probe 17; got \(activeBlocks)")
             // Allow some fraction without monitor info (inactive ports, HDMI-only)
             #expect(withMonitor > activeBlocks / 3,
                 "At least a third of active blocks should have monitor info; got \(withMonitor)/\(activeBlocks)")
@@ -481,10 +483,11 @@ struct DisplayPortTransportWatcherSweepTests {
         #expect(modelsTotal == blocksTotal,
             "Expected \(blocksTotal) DisplayPortUpdate models from probe 33 (no gate); got \(modelsTotal)")
 
-        // Calibrated against full corpus: 66 folders, 97 blocks.
+        // Actual 322 blocks across 204 folders, as of 2026-07. Floor set to
+        // ~87% of actual (280), not the stale 60 (19% of actual).
         if Self.hasDPProbeFiles() && blocksTotal > 0 {
-            #expect(blocksTotal >= 60,
-                "Expected at least 60 DP blocks in probe 33; got \(blocksTotal) -- were raw probes deleted?")
+            #expect(blocksTotal >= 280,
+                "Expected at least 280 DP blocks in probe 33; got \(blocksTotal) -- were raw probes deleted?")
         }
     }
 
@@ -589,12 +592,13 @@ struct DisplayPortTransportWatcherSweepTests {
             }
         }
 
+        // Actual as of 2026-07: 322 verifications, 160 active-block verifications.
+        // Floors set to ~87% (280) and ~87.5% (140) of actual respectively.
         if Self.hasDPProbeFiles() {
-            #expect(verified >= 60,
-                "Expected at least 60 probe-33 field verifications; got \(verified)")
-            // 51 active blocks confirmed in full corpus
-            #expect(activeVerified >= 30,
-                "Expected at least 30 active-block verifications in probe 33; got \(activeVerified)")
+            #expect(verified >= 280,
+                "Expected at least 280 probe-33 field verifications; got \(verified)")
+            #expect(activeVerified >= 140,
+                "Expected at least 140 active-block verifications in probe 33; got \(activeVerified)")
         }
     }
 
@@ -693,7 +697,7 @@ struct DisplayPortTransportWatcherSweepTests {
 
     // MARK: Sweep summary
 
-    @Test("DP watcher sweep: at least 30 folders contribute DP blocks across both probes")
+    @Test("DP watcher sweep: at least 280 folders contribute DP blocks across both probes")
     func sweepMinimumFolderCount() {
         guard Self.hasDPProbeFiles() else { return }
 
@@ -714,9 +718,10 @@ struct DisplayPortTransportWatcherSweepTests {
             if found { foldersWithDP += 1 }
         }
 
-        // Full corpus: 184 folders have probe-17 DP blocks, 66 have probe-33 DP blocks.
-        // Set conservatively to 30 so the assertion passes even on a partial corpus.
-        #expect(foldersWithDP >= 30,
-            "Expected at least 30 machine folders to contribute DP blocks; got \(foldersWithDP) out of \(folders.count)")
+        // Actual as of 2026-07: 312 folders have probe-17 DP blocks, 204 have
+        // probe-33 DP blocks, 323 folders have at least one of the two (out of
+        // 410 total). Floor set to ~87% of actual (280), not the stale 30 (9%).
+        #expect(foldersWithDP >= 280,
+            "Expected at least 280 machine folders to contribute DP blocks; got \(foldersWithDP) out of \(folders.count)")
     }
 }

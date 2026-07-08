@@ -128,16 +128,26 @@ struct DataLinkDiagnosticProbeSweepTests {
         return ports
     }
 
-    private static func allProbes() throws -> [String] {
-        try FileManager.default
-            .contentsOfDirectory(atPath: probeRoot.path)
-            .filter { entry in
-                var isDir: ObjCBool = false
-                let path = probeRoot.appendingPathComponent(entry).path
-                FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
-                return isDir.boolValue
-            }
-            .sorted()
+    /// Returns [] when the corpus root itself is absent (e.g. a worktree that
+    /// hasn't hard-linked the corpus in), the same guard shape
+    /// TransportWatcherSweepTests.allProbeFolders() uses. Note this does NOT
+    /// make this file's tests skip gracefully like that sibling's do: the
+    /// three callers below still assert hard count floors (`probes.count >
+    /// 20`, `rows >= 100`, etc.) that fail when the corpus is absent. The
+    /// guard's only effect is turning what would otherwise be an uncaught
+    /// thrown NSError (from `contentsOfDirectory` on a missing path) into a
+    /// clean, readable failed #expect instead -- arguably clearer, but still
+    /// a failure, not a skip.
+    private static func allProbes() -> [String] {
+        guard FileManager.default.fileExists(atPath: probeRoot.path) else { return [] }
+        guard let entries = try? FileManager.default
+            .contentsOfDirectory(atPath: probeRoot.path) else { return [] }
+        return entries.filter { entry in
+            var isDir: ObjCBool = false
+            let path = probeRoot.appendingPathComponent(entry).path
+            FileManager.default.fileExists(atPath: path, isDirectory: &isDir)
+            return isDir.boolValue
+        }.sorted()
     }
 
     // MARK: - Field parsers (mirror the offline catalogue extractor)
@@ -223,7 +233,7 @@ struct DataLinkDiagnosticProbeSweepTests {
 
     @Test("Every customer-probe MagSafe row returns nil (issue #195)")
     func everyMagSafeReturnsNil() throws {
-        let probes = try Self.allProbes()
+        let probes = Self.allProbes()
         #expect(probes.count > 20, "Expected many customer probes; found \(probes.count)")
 
         var magSafeRowsExamined = 0
@@ -274,7 +284,7 @@ struct DataLinkDiagnosticProbeSweepTests {
         // in the dataset advertises at least one data transport in
         // TransportsSupported. If this ever fires, the gate would
         // over-refuse legitimate ports.
-        let probes = try Self.allProbes()
+        let probes = Self.allProbes()
         var rows = 0
         for probe in probes {
             let ports = try Self.loadPorts(probe: probe)
@@ -295,7 +305,7 @@ struct DataLinkDiagnosticProbeSweepTests {
         // transportsActive.contains("CIO")) keeps the always-up internal
         // root lane from being attributed to the user's cable. Without
         // an honest active rate, the diagnostic should abstain.
-        let probes = try Self.allProbes()
+        let probes = Self.allProbes()
         var examined = 0
         for probe in probes {
             let ports = try Self.loadPorts(probe: probe)

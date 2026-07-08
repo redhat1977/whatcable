@@ -241,6 +241,7 @@ struct PowerTelemetryParsingTests {
         var foldersWithProbe32 = 0
         var totalSamplesProduced = 0
         var foldersWithItems = 0
+        var foldersWithSamples = 0
 
         for folder in folders {
             guard let text = try Self.loadProbe32(folder: folder) else { continue }
@@ -274,9 +275,23 @@ struct PowerTelemetryParsingTests {
                 items as Any, sources: sources
             )
             totalSamplesProduced += samples.count
+            if !samples.isEmpty { foldersWithSamples += 1 }
 
             for sample in samples {
                 // Watts must be non-negative (a port at 0W is valid).
+                //
+                // Note: `sample.watts` here is `winning.maxPowerMW` (see
+                // portPowerSamplesFromControllerInfo) -- despite the field
+                // name, it is milliwatts on this path, confirmed by a corpus
+                // max of 140000 (140W EPR MagSafe, a real and unremarkable
+                // value once read as mW). A "sane wattage ceiling" invariant
+                // was considered for this sweep (item 5 of the 2026-07 test
+                // hardening pass) and rejected: the field isn't consistently
+                // watts across call sites (see probe32SweepPowerOutDetails
+                // below, corpus max 15543 there too), so any assumed ceiling
+                // would be checking the wrong unit rather than a real
+                // physical invariant. Non-negativity is the only invariant
+                // that holds regardless of unit.
                 #expect(sample.watts >= 0,
                     "Folder \(folder): negative watts \(sample.watts) from PortControllerInfo")
                 // portKey must be non-empty.
@@ -292,6 +307,14 @@ struct PowerTelemetryParsingTests {
             // At least some folders must contain parseable PortControllerInfo.
             #expect(foldersWithItems > 0,
                 "Expected to find PortControllerInfo data in at least some probe-32 files; foldersWithProbe32=\(foldersWithProbe32)")
+
+            // Parse-coverage floor: actual 276 of 387 probe-32 folders yield at
+            // least one charge-contract sample, as of 2026-07. Floor set to
+            // ~87% of actual (240). This is stronger than the "some folders"
+            // check above: it catches a regression that still produces a few
+            // items but silently stops joining most of them to a source.
+            #expect(foldersWithSamples >= 240,
+                "Expected at least 240 folders to yield a PortControllerInfo-derived sample; got \(foldersWithSamples) of \(foldersWithProbe32) probe-32 folders")
         }
     }
 
@@ -300,6 +323,7 @@ struct PowerTelemetryParsingTests {
         let folders = try Self.allProbes()
         var foldersWithData = 0
         var totalSamplesProduced = 0
+        var foldersWithSamples = 0
 
         for folder in folders {
             guard let text = try Self.loadProbe32(folder: folder) else { continue }
@@ -313,16 +337,34 @@ struct PowerTelemetryParsingTests {
                 from: items as Any, portKeys: []
             )
             totalSamplesProduced += samples.count
+            if !samples.isEmpty { foldersWithSamples += 1 }
 
             for sample in samples {
+                // Note: `sample.watts` here is the raw IOKit "Watts" field
+                // (see portPowerSamples), which is NOT true watts either: the
+                // corpus max is 15543, far above any real USB-C wattage. A
+                // physical-ceiling invariant was considered for this sweep
+                // and rejected for the same reason as probe32SweepPortControllerInfo
+                // above -- the unit isn't watts, so non-negativity is the
+                // invariant that actually holds.
                 #expect(sample.watts >= 0,
                     "Folder \(folder): negative watts \(sample.watts) from PowerOutDetails")
                 #expect(!sample.portKey.isEmpty,
                     "Folder \(folder): empty portKey in PowerOutDetails sample")
             }
         }
-        // Sweep count is purely informational; no hard minimum on a fresh clone.
-        _ = "Probe-32 PowerOutDetails sweep: \(foldersWithData) folders with data, \(totalSamplesProduced) samples"
+        print("Probe-32 PowerOutDetails sweep: \(foldersWithData) folders with data, \(totalSamplesProduced) samples")
+        // Parse-coverage floor: actual 145 of 410 folders yield at least one
+        // PowerOutDetails-derived sample, as of 2026-07 (desktop machines and
+        // machines without this optional probe legitimately contribute zero,
+        // so this is well under the full corpus size). Floor set to ~86% of
+        // actual (125), not the previous "no hard minimum" (purely
+        // informational, so a regression that dropped every sample would
+        // have passed silently).
+        if foldersWithData > 0 {
+            #expect(foldersWithSamples >= 125,
+                "Expected at least 125 folders to yield a PowerOutDetails-derived sample; got \(foldersWithSamples) of \(foldersWithData) folders with PowerOutDetails data")
+        }
     }
 
     // MARK: - decodeNegotiatedContract fixture tests

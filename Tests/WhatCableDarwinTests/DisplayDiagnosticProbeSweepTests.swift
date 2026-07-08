@@ -667,11 +667,14 @@ struct DisplayDiagnosticProbeSweepTests {
         // Floor: at minimum N HDMI-bearing folders must be in the sweep so
         // a future corpus that lost most of them (selective re-fetch, partial
         // sync) doesn't silently degrade this into a near-vacuous check.
-        // The current corpus has 14 such folders; 5 is a comfortable lower
-        // bound that catches catastrophic shrinkage without churning every
-        // time someone curates the corpus.
+        // Actual 23 such folders as of 2026-07 (up from 14). Native-HDMI is a
+        // narrow, curated signal (only ~5-6% of the 410-folder corpus), so
+        // unlike the broader per-probe floors elsewhere in this file the
+        // usual ~85-90%-of-actual policy would leave almost no slack for
+        // routine dedup/curation churn; 15 (~65% of actual, 3x the old stale
+        // floor of 5) still catches a real regression without that risk.
         if !folders.filter({ Self.loadProbe33(folder: $0) != nil }).isEmpty {
-            #expect(foldersWithHDMI >= 5,
+            #expect(foldersWithHDMI >= 15,
                 "Only \(foldersWithHDMI) folder(s) with active HDMI parents found across the corpus; sweep is near-vacuous, restore HDMI fixtures")
         }
     }

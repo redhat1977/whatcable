@@ -237,11 +237,12 @@ struct TransportWatcherSweepTests {
         #expect(nilsForMissingState == blocksWithoutState,
             "Expected nil for all \(blocksWithoutState) blocks missing TRM_State; got \(nilsForMissingState) nils")
 
-        // Calibrated minimum: 304 TRM_State blocks found across 244 folders.
-        // This assertion is skipped on a fresh clone (no probe 17 files).
+        // Actual 821 TRM_State blocks across 225 of 410 folders, as of 2026-07.
+        // Floor set to ~85% of actual (700). This assertion is skipped on a
+        // fresh clone (no probe 17 files).
         if Self.hasTransportProbeFiles() {
-            #expect(blocksWithState >= 200,
-                "Expected at least 200 blocks with TRM_State across the corpus; got \(blocksWithState) -- did probe files get deleted?")
+            #expect(blocksWithState >= 700,
+                "Expected at least 700 blocks with TRM_State across the corpus; got \(blocksWithState) -- did probe files get deleted?")
         }
     }
 
@@ -285,9 +286,10 @@ struct TransportWatcherSweepTests {
             }
         }
 
+        // Actual 485 verifications as of 2026-07. Floor set to ~87% of actual.
         if Self.hasTransportProbeFiles() {
-            #expect(verified >= 100,
-                "Expected at least 100 TRM field verifications across the corpus; got \(verified)")
+            #expect(verified >= 420,
+                "Expected at least 420 TRM field verifications across the corpus; got \(verified)")
         }
     }
 
@@ -338,10 +340,11 @@ struct TransportWatcherSweepTests {
             }
         }
 
-        // Calibrated minimum: 57 CIO blocks across 42 folders.
+        // Actual 101 CIO blocks across 75 folders, as of 2026-07. Floor set to
+        // ~89% of actual.
         if Self.hasTransportProbeFiles() && cioBlocks > 0 {
-            #expect(cioBlocks >= 40,
-                "Expected at least 40 CIO blocks in the corpus; got \(cioBlocks)")
+            #expect(cioBlocks >= 90,
+                "Expected at least 90 CIO blocks in the corpus; got \(cioBlocks)")
             #expect(modelsProduced == cioBlocks,
                 "Every CIO block should produce a model: expected \(cioBlocks), got \(modelsProduced)")
         }
@@ -395,15 +398,16 @@ struct TransportWatcherSweepTests {
         #expect(models19 == blocks19,
             "Probe 19: expected \(blocks19) USB3 models (no gate); got \(models19)")
 
-        // Calibrated minimums: 268 blocks in probe 17, 287 in probe 19
+        // Actual as of 2026-07: 465 blocks in probe 17, 494 in probe 19.
+        // Floors set to ~86% (400) and ~85% (420) of actual respectively.
         if Self.hasTransportProbeFiles() {
             if blocks17 > 0 {
-                #expect(blocks17 >= 200,
-                    "Expected at least 200 USB3 blocks in probe 17; got \(blocks17)")
+                #expect(blocks17 >= 400,
+                    "Expected at least 400 USB3 blocks in probe 17; got \(blocks17)")
             }
             if blocks19 > 0 {
-                #expect(blocks19 >= 200,
-                    "Expected at least 200 USB3 blocks in probe 19; got \(blocks19)")
+                #expect(blocks19 >= 420,
+                    "Expected at least 420 USB3 blocks in probe 19; got \(blocks19)")
             }
         }
     }
@@ -446,9 +450,10 @@ struct TransportWatcherSweepTests {
             }
         }
 
+        // Actual 959 verifications as of 2026-07. Floor set to ~85% of actual.
         if Self.hasTransportProbeFiles() {
-            #expect(verified >= 100,
-                "Expected at least 100 USB3 field verifications; got \(verified)")
+            #expect(verified >= 820,
+                "Expected at least 820 USB3 field verifications; got \(verified)")
         }
     }
 
@@ -518,10 +523,11 @@ struct TransportWatcherSweepTests {
         #expect(totalModels == totalBlocks,
             "Every PowerSource block should produce a model: expected \(totalBlocks), got \(totalModels)")
 
-        // Calibrated minimums: 361 blocks, 118 with WinningOption
+        // Actual as of 2026-07: 604 blocks, 204 with WinningOption. Floor set
+        // to ~86% of the block total.
         if Self.hasTransportProbeFiles() && totalBlocks > 0 {
-            #expect(totalBlocks >= 250,
-                "Expected at least 250 PowerSource blocks in the corpus; got \(totalBlocks)")
+            #expect(totalBlocks >= 520,
+                "Expected at least 520 PowerSource blocks in the corpus; got \(totalBlocks)")
         }
     }
 
@@ -573,9 +579,10 @@ struct TransportWatcherSweepTests {
             }
         }
 
+        // Actual 204 verifications as of 2026-07. Floor set to ~88% of actual.
         if Self.hasTransportProbeFiles() {
-            #expect(verified >= 80,
-                "Expected at least 80 WinningOption verifications; got \(verified)")
+            #expect(verified >= 180,
+                "Expected at least 180 WinningOption verifications; got \(verified)")
         }
     }
 
@@ -608,12 +615,11 @@ struct TransportWatcherSweepTests {
             if found { foldersWithAnyService += 1 }
         }
 
-        // Calibrated against 244-folder corpus where 244 folders have at least
-        // one of these service types present in probe 17 or probe 19.
-        // Minimum set conservatively to 50 so the assertion is meaningful even
-        // if many folders lack the optional probes.
-        #expect(foldersWithAnyService >= 50,
-            "Expected at least 50 machine folders to contribute parsed services; got \(foldersWithAnyService) out of \(folders.count)")
+        // Actual as of 2026-07: 390 of 410 folders have at least one of these
+        // service types present in probe 17 or probe 19. Floor set to ~87% of
+        // actual (340), not the stale 50 (13% of actual).
+        #expect(foldersWithAnyService >= 340,
+            "Expected at least 340 machine folders to contribute parsed services; got \(foldersWithAnyService) out of \(folders.count)")
     }
 
     // MARK: - Helpers

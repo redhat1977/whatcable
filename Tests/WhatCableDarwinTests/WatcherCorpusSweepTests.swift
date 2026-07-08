@@ -504,14 +504,16 @@ struct HPMInterfaceProbeSweepTests {
         // (fresh clone) or only DAR-138 fixture subsets are present (~30
         // folders), skip the absolute floor; the per-fixture DAR-138 tests
         // carry their own assertions there. The floor below is calibrated
-        // for the full on-disk corpus (240+ probe-17 folders).
+        // for the full on-disk corpus (222 probe-17 folders as of 2026-07;
+        // see corpus.jsonl for the current total folder count).
         if foldersScanned >= 100 {
-            // Each folder contributes roughly 2-4 HPM blocks; 100 models from
-            // the full corpus is a conservative floor (observed yield: 460
-            // blocks, ~80-85% real physical ports).
+            // Actual as of 2026-07: 222 folders scanned, 789 blocks, 789 models
+            // (every real-port block now resolves; the DAR-138-era gap between
+            // blocks and models has closed). Floor set to ~89% of actual (700),
+            // not the stale 100 (13% of actual).
             #expect(
-                modelsProduced >= 100,
-                "HPM sweep: only \(modelsProduced) models from \(blocksTotal) blocks across \(foldersScanned) folders; expected at least 100"
+                modelsProduced >= 700,
+                "HPM sweep: only \(modelsProduced) models from \(blocksTotal) blocks across \(foldersScanned) folders; expected at least 700"
             )
         }
     }
@@ -598,10 +600,12 @@ struct PDSOPIdentitySweepTests {
         }
 
         // Guard: all probe-01 files are git-tracked, so the corpus always has blocks.
-        // Calibrated against 298 SOP + 184 SOP' = 482 total blocks across 248 folders.
+        // Actual as of 2026-07: 821 SOP + SOP' blocks across the 410-folder
+        // corpus (see corpus.jsonl). Floor set to ~85% of actual (700), not
+        // the stale 100 (12% of actual).
         #expect(
-            blocksTotal >= 100,
-            "PD sweep: only \(blocksTotal) blocks found; expected at least 100 (are the probe files present?)"
+            blocksTotal >= 700,
+            "PD sweep: only \(blocksTotal) blocks found; expected at least 700 (are the probe files present?)"
         )
         #expect(
             modelsProduced >= blocksTotal - 5,
@@ -645,8 +649,10 @@ struct PDSOPIdentitySweepTests {
         }
 
         // Every folder has at least one SOP block (gate for connected accessories);
-        // SOPp only appears when a cable e-marker is present.
-        #expect(sopCount >= 100, "Expected at least 100 SOP blocks; found \(sopCount)")
+        // SOPp only appears when a cable e-marker is present. Actual 491 SOP
+        // blocks, 330 SOP' blocks as of 2026-07. Floor set to ~85% of actual
+        // (420), not the stale 100 (20% of actual).
+        #expect(sopCount >= 420, "Expected at least 420 SOP blocks; found \(sopCount)")
     }
 }
 
@@ -710,10 +716,12 @@ struct VDMIdentitySweepTests {
             }
         }
 
-        // Subtract SOPpp blocks (not swept here) - still expect a large yield
+        // Subtract SOPpp blocks (not swept here) - still expect a large yield.
+        // Actual 821 blocks as of 2026-07 (corpus has no SOPpp blocks, so this
+        // matches the SOP+SOP' total above). Floor set to ~85% of actual (700).
         #expect(
-            blocksTotal >= 100,
-            "VDM sweep: only \(blocksTotal) SOP/SOPp blocks; expected at least 100"
+            blocksTotal >= 700,
+            "VDM sweep: only \(blocksTotal) SOP/SOPp blocks; expected at least 700"
         )
         #expect(
             updatesProduced >= blocksTotal - 5,
@@ -791,12 +799,14 @@ struct LiquidDetectionSweepTests {
         }
 
         if foldersScanned >= 100 {
-            // Corpus has 252 nested AppleHPMLDCMType2 blocks across 94 folders.
-            // Absolute floor only when the full corpus is on disk; fixture-only
-            // checkouts are covered by the per-fixture DAR-138 tests.
+            // Actual as of 2026-07: 452 nested AppleHPMLDCMType2 blocks across
+            // 169 folders. Floor set to ~88% of actual (400), not the stale 50
+            // (11% of actual). Absolute floor only when the full corpus is on
+            // disk; fixture-only checkouts are covered by the per-fixture
+            // DAR-138 tests.
             #expect(
-                blocksTotal >= 50,
-                "LDCM sweep: only \(blocksTotal) blocks from \(foldersScanned) folders; expected at least 50"
+                blocksTotal >= 400,
+                "LDCM sweep: only \(blocksTotal) blocks from \(foldersScanned) folders; expected at least 400"
             )
             #expect(
                 updatesProduced == blocksTotal,
