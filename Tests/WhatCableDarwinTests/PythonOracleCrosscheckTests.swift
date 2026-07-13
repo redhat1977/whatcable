@@ -709,7 +709,7 @@ private func oracleAllTransportBlocks(folder: String, className: String) -> [[St
 /// The two probes that carry CIO transports, in the order the Python oracle
 /// (`scripts/inspect-probe.py`) reads them.
 ///
-/// Probe 17 alone is not enough: it is truncated at the 64 KB pipe cap on 37
+/// Probe 17 alone is not enough: it is truncated at the 64 KB pipe cap on 41
 /// corpus folders and absent on others, so reading it alone undercounts
 /// machines-with-a-connected-Thunderbolt-device by 36 (87 vs the true 123).
 /// Probe 19 is never truncated in the corpus and its CIO port set is a superset

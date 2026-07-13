@@ -34,12 +34,29 @@ public enum HPMPortUUIDMap {
     }
 
     /// Builds the map directly from IOKit. Called at startup (before ports are
-    /// available) or when `from(ports:)` returns an empty map (M1/M2 where the
-    /// UUID is absent or the watcher hasn't run yet).
+    /// available) or when `from(ports:)` returns an empty map.
     ///
-    /// Queries `AppleHPMDeviceHALType3` (M3+ only). M1/M2 do not expose this
+    /// Queries `AppleHPMDeviceHALType3`, the M3+ subclass, so **this function**
+    /// returns an empty map on M1/M2. It deliberately does NOT guess a positional
+    /// mapping.
+    ///
+    /// **Do not read that as "M1/M2 have no controller UUID". They do.** The
+    /// 206-machine probe-35 corpus shows every `AppleHPMDevice` (M1/M2) port
+    /// carrying one (345/345). This function simply doesn't ask for them, because
+    /// it matches the subclass rather than the `AppleHPMDevice` base class.
+    ///
+    /// It does not need to. `from(ports:)` is the primary path and it *does* see
+    /// M1/M2: it reads `AppleHPMInterface.hpmControllerUUID`, which
+    /// `AppleHPMInterfaceWatcher` stamps with a class-agnostic ancestor walk
+    /// (base class *or* `AppleHPMDeviceHAL*`). `PowerTelemetryWatcher.updatePorts(_:)`
+    /// feeds it from every live entry point. So `current()` is the startup /
+    /// no-ports-yet fallback, not the M1/M2 story.
+    ///
+    /// An earlier version of this comment asserted "M1/M2 do not expose this
     /// class, so the map is empty there and the caller falls back to no-per-port
-    /// state. It deliberately does NOT guess a positional mapping.
+    /// state". The first half is true of this function; the implication was false
+    /// and it misled two separate investigations. Left explicit so it doesn't
+    /// mislead a third.
     public static func current() -> [String: String] {
         var map: [String: String] = [:]
 
