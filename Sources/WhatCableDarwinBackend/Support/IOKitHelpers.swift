@@ -127,14 +127,34 @@ public func wcPortType(read: (String) -> Any?, service: io_service_t? = nil) -> 
     return "USB-C"
 }
 
+/// Is this IOKit class name an HPM power-controller node (the node that carries
+/// the port's `UUID`)?
+///
+/// **This predicate is deliberately class-agnostic and must stay that way.**
+/// `AppleHPMDevice` is the base class used on **M1/M2**; `AppleHPMDeviceHAL*`
+/// (e.g. `AppleHPMDeviceHALType3`) is the M3+ subclass. **Both carry a `UUID`.**
+/// The 206-machine probe-35 corpus is unambiguous: 295/295 `AppleHPMDevice`
+/// ports and 409/409 `AppleHPMDeviceHALType3` ports have one, zero misses
+/// (704 ports total; probe 35 also lists 50 `(no port child)` internal
+/// controllers, which carry a UUID but own no port and are not counted).
+///
+/// Narrowing this to the `HALType3` subclass would silently drop every M1/M2
+/// machine from the port join while looking like "M1/M2 hardware has no UUID".
+/// That misreading has already cost two separate investigations, so it is pinned
+/// by `HPMControllerClassGateTests`: narrow it and the tests go red.
+public func wcIsHPMControllerClass(_ className: String) -> Bool {
+    className == "AppleHPMDevice" || className.hasPrefix("AppleHPMDeviceHAL")
+}
+
 /// Walks the IOKit parent chain from `service` looking for an HPM power
-/// controller node (`AppleHPMDevice` or `AppleHPMDeviceHALType3`) and
+/// controller node (`AppleHPMDevice` or `AppleHPMDeviceHAL*`) and
 /// returns its `UUID` property as a raw string.
 ///
 /// This is the same walk `AppleHPMInterfaceWatcher.hpmControllerUUID(for:)`
 /// performs, factored out so every per-port source watcher (PowerSource,
 /// USB3Transport, TRMTransport, CIOCableCapability) can capture the same UUID
-/// without duplicating the logic.
+/// without duplicating the logic. Both share `wcIsHPMControllerClass` so the two
+/// walks can never drift apart on which classes count.
 ///
 /// Returns `nil` when no HPM controller is found within 12 parent steps, or
 /// when the controller carries no `UUID` property. The depth limit of 12
@@ -150,7 +170,7 @@ public func wcHPMControllerUUID(for service: io_service_t) -> String? {
         var classBuf = [CChar](repeating: 0, count: 128)
         IOObjectGetClass(current, &classBuf)
         let cls = String(cString: classBuf)
-        if cls == "AppleHPMDevice" || cls.hasPrefix("AppleHPMDeviceHAL") {
+        if wcIsHPMControllerClass(cls) {
             if let uuid = IORegistryEntryCreateCFProperty(
                 current,
                 "UUID" as CFString,

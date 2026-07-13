@@ -21,12 +21,16 @@ import WhatCableCore
 // normalisation (`.normalise`, exercised indirectly here too) run against
 // real per-machine UUID sets.
 //
-// Probe 35 format (verified against the corpus, 2026-07):
+// Probe 35 format (verified against the corpus, 2026-07). UUIDs below are
+// SYNTHETIC placeholders: an earlier version of this comment pasted two REAL
+// contributor UUIDs from the corpus straight into tracked test source, which is
+// exactly the leak the privacy rule below exists to prevent (Codex review, #403).
 //   [0] Port-USB-C@3        class=AppleHPMDeviceHALType3
-//         UUID=ADF2210F-FA00-4D29-4EFE-0C0883783E56  RID=2  Address=12
-//         ConnectionUUID=8F6F98E1-5276-4DC1-BF0B-6761BE6562EB
-//   [1] Port-MagSafe 3@1    class=AppleHPMDeviceHALType3
+//         UUID=AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE  RID=2  Address=12
+//         ConnectionUUID=11111111-2222-3333-4444-555555555555
+//   [1] Port-MagSafe 3@1    class=AppleHPMDevice          <- M1/M2 base class
 //         UUID=...
+//   [2] (no port child)     class=AppleHPMDevice          <- controller, NOT a port
 //
 // PRIVACY: UUIDs are an internal join key only (see HPMPortUUIDMap's own
 // doc comment and MEMORY.md "UUID/UID is private research data"). Assertion
@@ -67,7 +71,19 @@ struct HPMPortUUIDMapCorpusSweepTests {
         let label: String       // e.g. "Port-USB-C@3" or "Port-MagSafe 3@1"
         let portNumber: Int     // parsed decimal suffix after "@"
         let isMagSafe: Bool
-        let uuid: String        // raw, with dashes, as printed
+        let controllerClass: String   // e.g. "AppleHPMDevice" (M1/M2) or "AppleHPMDeviceHALType3" (M3+)
+        /// nil when the probe printed `UUID=(none)`. MUST stay optional: an
+        /// earlier version dropped such records at parse time, which made the
+        /// central "every port carries a UUID" claim UNFALSIFIABLE -- a port that
+        /// lost its UUID would simply vanish from the sweep instead of failing it
+        /// (Codex review, #403). Zero ports report (none) today; the point is that
+        /// we would now find out if that changed.
+        let uuid: String?
+
+        /// True for the M1/M2 base class. This is the case that used to be
+        /// invisible to this sweep, because `makeHPMInterface` hardcoded the
+        /// M3+ subclass and threw the real `class=` away.
+        var isPreM3BaseClass: Bool { controllerClass == "AppleHPMDevice" }
     }
 
     private static func parseProbe35(_ text: String) -> [Probe35Record] {
@@ -75,6 +91,7 @@ struct HPMPortUUIDMapCorpusSweepTests {
         var pendingLabel: String?
         var pendingPortNumber: Int?
         var pendingIsMagSafe = false
+        var pendingClass: String?
 
         for rawLine in text.split(separator: "\n", omittingEmptySubsequences: false) {
             let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
@@ -82,19 +99,33 @@ struct HPMPortUUIDMapCorpusSweepTests {
                 let afterBracket = trimmed[trimmed.index(after: closeIdx)...].trimmingCharacters(in: .whitespaces)
                 guard let classRange = afterBracket.range(of: "class=") else { continue }
                 let label = String(afterBracket[..<classRange.lowerBound]).trimmingCharacters(in: .whitespaces)
+                // The controller class is the rest of the line after "class=".
+                // Capture it: it is the whole point of the M1/M2 assertions below.
+                let cls = String(afterBracket[classRange.upperBound...])
+                    .trimmingCharacters(in: .whitespaces)
+                    .prefix { !$0.isWhitespace }
                 guard let atIdx = label.lastIndex(of: "@") else { continue }
                 let numDigits = label[label.index(after: atIdx)...].prefix { $0.isNumber }
                 guard let num = Int(numDigits) else { continue }
                 pendingLabel = label
                 pendingPortNumber = num
                 pendingIsMagSafe = label.contains("MagSafe")
-            } else if trimmed.hasPrefix("UUID="), let label = pendingLabel, let num = pendingPortNumber {
+                pendingClass = String(cls)
+            } else if trimmed.hasPrefix("UUID="),
+                      let label = pendingLabel,
+                      let num = pendingPortNumber,
+                      let cls = pendingClass {
                 let afterEq = trimmed.dropFirst("UUID=".count)
-                let uuid = String(afterEq.prefix { $0 != " " })
-                guard !uuid.isEmpty else { continue }
-                results.append(Probe35Record(label: label, portNumber: num, isMagSafe: pendingIsMagSafe, uuid: uuid))
+                let raw = String(afterEq.prefix { $0 != " " })
+                guard !raw.isEmpty else { continue }
+                // Record the ABSENCE rather than discarding the port, so a port
+                // without a UUID fails the sweep instead of disappearing from it.
+                let uuid: String? = (raw == "(none)") ? nil : raw
+                results.append(Probe35Record(label: label, portNumber: num, isMagSafe: pendingIsMagSafe,
+                                             controllerClass: cls, uuid: uuid))
                 pendingLabel = nil
                 pendingPortNumber = nil
+                pendingClass = nil
             }
         }
         return results
@@ -126,12 +157,28 @@ struct HPMPortUUIDMapCorpusSweepTests {
             "PortNumber": NSNumber(value: record.portNumber),
             "PortType": NSNumber(value: record.isMagSafe ? 0x11 : 0x2),
         ]
+        // `className` here is the PORT node's class, which is an
+        // `AppleHPMInterface*` type on every generation. The CONTROLLER class
+        // (record.controllerClass: AppleHPMDevice on M1/M2, AppleHPMDeviceHAL*
+        // on M3+) is a separate upstream node and is what the ancestor-walk gate
+        // keys on. An earlier version of this file passed the *controller* class
+        // here, hardcoded to "AppleHPMDeviceHALType3", which both mislabelled the
+        // port node and made every M1/M2 record look like an M3+ one -- so the
+        // M1/M2 join was never actually exercised by this sweep.
+        // Gate the UUID on the SHARED production predicate, applied to the real
+        // controller class from probe 35. This is what makes the sweep exercise
+        // the class gate rather than merely injecting a UUID it already read:
+        // narrow `wcIsHPMControllerClass` and all 295 M1/M2 ports stop resolving.
+        // (Codex review #403: previously `controllerClass` only selected records
+        // and never controlled UUID acquisition, so the sweep proved only that
+        // `from(ports:)` copies a supplied UUID into a dictionary.)
+        let uuid = wcIsHPMControllerClass(record.controllerClass) ? record.uuid : nil
         return AppleHPMInterface.from(
             entryID: entryID,
             serviceName: record.label,
-            className: "AppleHPMDeviceHALType3",
+            className: "AppleHPMInterfaceType10",
             read: { props[$0] },
-            hpmControllerUUID: record.uuid
+            hpmControllerUUID: uuid
         )
     }
 
@@ -150,6 +197,7 @@ struct HPMPortUUIDMapCorpusSweepTests {
         var recordsTotal = 0
         var joinedTotal = 0
         var portKeyMismatches = 0
+        var missingUUIDPorts = 0
 
         for folder in Self.allProbeFolders() {
             let records = Self.loadProbe35(folder: folder)
@@ -173,7 +221,15 @@ struct HPMPortUUIDMapCorpusSweepTests {
             // UUID per record is expected (each physical port has its own HPM
             // controller UUID), so map.count should equal the number of
             // distinct normalised UUIDs across this machine's records.
-            let distinctUUIDs = Set(records.map { HPMPortUUIDMap.normalise($0.uuid) })
+            // THE claim, now falsifiable: every port record must carry a UUID.
+            // Previously a UUID-less port was dropped at parse time and this could
+            // never fail.
+            let missing = records.filter { $0.uuid == nil }
+            #expect(missing.isEmpty,
+                "\(folder): \(missing.count) port(s) report UUID=(none) -- 'every port carries a controller UUID' no longer holds")
+            missingUUIDPorts += missing.count
+
+            let distinctUUIDs = Set(records.compactMap { $0.uuid.map(HPMPortUUIDMap.normalise) })
             #expect(map.count == distinctUUIDs.count,
                 "\(folder): map has \(map.count) entries but \(distinctUUIDs.count) distinct UUIDs were present")
 
@@ -181,7 +237,8 @@ struct HPMPortUUIDMapCorpusSweepTests {
             // own (normalised) UUID must be a key in the map, and it must map
             // back to that record's own portKey.
             for record in records {
-                let normalised = HPMPortUUIDMap.normalise(record.uuid)
+                guard let rawUUID = record.uuid else { continue }   // already asserted above
+                let normalised = HPMPortUUIDMap.normalise(rawUUID)
                 guard let resolvedKey = map[normalised] else {
                     Issue.record("\(folder): UUID \(Self.shortUUID(normalised))... from \(record.label) did not resolve in the map")
                     continue
@@ -197,16 +254,27 @@ struct HPMPortUUIDMapCorpusSweepTests {
             // chars for a well-formed UUID (the format HPMPortUUIDMap.from
             // requires internally to accept an entry at all).
             for record in records {
-                let normalised = HPMPortUUIDMap.normalise(record.uuid)
+                guard let rawUUID = record.uuid else { continue }
+                let normalised = HPMPortUUIDMap.normalise(rawUUID)
+                // NOTE: bind the comparison to a Bool BEFORE asserting. Swift
+                // Testing auto-captures the operands of `#expect(a == b)` and
+                // prints them on failure, so `#expect(normalised == normalised
+                // .lowercased())` would dump a FULL real contributor UUID into
+                // test output the moment normalise() regressed -- breaking this
+                // file's own privacy guarantee (adversarial review, #403;
+                // reproduced: it printed 704 full UUIDs). Capturing a Bool prints
+                // only `false`. `count == 32` above is safe: it captures the Int.
                 #expect(normalised.count == 32,
                     "\(folder): normalised UUID length \(normalised.count) != 32 for \(record.label)")
-                #expect(normalised == normalised.lowercased(),
-                    "\(folder): normalise() did not lowercase for \(record.label)")
+                let isLowercased = normalised == normalised.lowercased()
+                #expect(isLowercased,
+                    "\(folder): normalise() did not lowercase for \(record.label) (UUID \(Self.shortUUID(normalised))...)")
             }
         }
 
         print("[HPMPortUUIDMapSweep] \(foldersScanned) folders, \(recordsTotal) port records, "
-            + "\(joinedTotal) joined, \(portKeyMismatches) portKey mismatches")
+            + "\(joinedTotal) joined, \(portKeyMismatches) portKey mismatches, "
+            + "\(missingUUIDPorts) ports missing a UUID")
 
         // Correctness invariant: run whenever there is ANY probe-35 data at
         // all. A portKey mismatch is a real bug regardless of corpus size.
@@ -215,22 +283,77 @@ struct HPMPortUUIDMapCorpusSweepTests {
                 "Expected zero portKey mismatches between HPMPortUUIDMap.from(ports:) and probe-35's own labels")
         }
 
-        // Coverage floor: actual 156 folders, 537 port records as of 2026-07
-        // (see corpus.jsonl for the current probe-35 count; 537 total records
-        // computed directly from the on-disk corpus during this pass). Floor
-        // set to ~85% of actual for both (135 folders, 455 records).
+        // Coverage floor: actual 206 folders, 704 PORT records as of 2026-07-13
+        // (409 AppleHPMDeviceHALType3 + 295 AppleHPMDevice). Probe 35 also lists 50
+        // `(no port child)` internal controllers, which are NOT ports and are
+        // excluded by the parser. Floor at ~85% of actual (175 folders, 598 records).
         //
-        // Two-tier reality: probe 35 has ZERO git-tracked files (all 156 are
-        // on-disk-only), so `foldersScanned` is 0 on a fresh clone and this
-        // already skips via the threshold below. Verified directly: a
-        // fresh-clone simulation (scratch dir with only git-tracked corpus
-        // files) produces foldersScanned == 0 here. The explicit 50 threshold
-        // is defensive consistency with the other probes in this pass.
+        // Two-tier reality: probe 35 has ZERO git-tracked files, so
+        // `foldersScanned` is 0 on a fresh clone and the floor block below skips
+        // entirely. The explicit 50 threshold is defensive consistency with the
+        // other sweeps.
         if foldersScanned >= 50 {
-            #expect(foldersScanned >= 135,
-                "Expected at least 135 folders with probe-35 records; got \(foldersScanned)")
-            #expect(recordsTotal >= 455,
-                "Expected at least 455 probe-35 port records across the corpus; got \(recordsTotal)")
+            #expect(foldersScanned >= 175,
+                "Expected at least 175 folders with probe-35 records; got \(foldersScanned)")
+            #expect(recordsTotal >= 598,
+                "Expected at least 598 probe-35 port records across the corpus; got \(recordsTotal)")
+        }
+    }
+
+    // MARK: - The M1/M2 claim, against real hardware data
+    //
+    // This is the assertion that the old version of this sweep could not make,
+    // because `makeHPMInterface` hardcoded the M3+ controller class and threw
+    // probe 35's real `class=` away. The claim "M1/M2 machines carry a controller
+    // UUID and it flows through the production join" was asserted in prose, got
+    // reversed twice, and was never executable. Now it is.
+    @Test("M1/M2 (AppleHPMDevice) ports carry a UUID and join through the production map")
+    func preM3BaseClassPortsCarryUUIDAndJoin() {
+        var preM3Ports = 0
+        var m3PlusPorts = 0
+        var preM3MachinesJoined = 0
+        var preM3MachinesSeen = 0
+        var classesSeen: Set<String> = []
+
+        for folder in Self.allProbeFolders() {
+            let records = Self.loadProbe35(folder: folder)
+            guard !records.isEmpty else { continue }
+            for r in records { classesSeen.insert(r.controllerClass) }
+
+            let preM3 = records.filter { $0.isPreM3BaseClass }
+            preM3Ports += preM3.count
+            m3PlusPorts += records.count - preM3.count
+            guard !preM3.isEmpty else { continue }
+            preM3MachinesSeen += 1
+
+            // Drive the PRODUCTION join with this M1/M2 machine's real ports.
+            let ports: [AppleHPMInterface] = preM3.enumerated().compactMap { i, r in
+                Self.makeHPMInterface(from: r, entryID: UInt64(i + 1))
+            }
+            let map = HPMPortUUIDMap.from(ports: ports)
+
+            // The load-bearing assertion. An empty map here means every M1/M2
+            // machine silently drops out of the port/power join.
+            #expect(!map.isEmpty,
+                "\(folder): M1/M2 (AppleHPMDevice) ports produced an EMPTY join map -- M1/M2 would be silently dropped")
+            #expect(map.count == Set(preM3.compactMap { $0.uuid.map(HPMPortUUIDMap.normalise) }).count,
+                "\(folder): M1/M2 join map lost entries (collision or rejected UUID)")
+            if !map.isEmpty { preM3MachinesJoined += 1 }
+        }
+
+        print("[HPMPortUUIDMapSweep/M1M2] classes=\(classesSeen.sorted()) "
+            + "preM3Ports=\(preM3Ports) m3PlusPorts=\(m3PlusPorts) "
+            + "preM3MachinesJoined=\(preM3MachinesJoined)/\(preM3MachinesSeen)")
+
+        // Non-vacuity: this test is worthless if the corpus happens to contain no
+        // M1/M2 machines -- it would pass by iterating over nothing. Only assert
+        // when probe-35 data is actually present (skips on a fresh clone, where
+        // probe 35 is entirely untracked).
+        if preM3Ports + m3PlusPorts > 0 {
+            #expect(preM3Ports > 0,
+                "No AppleHPMDevice (M1/M2) ports found in probe 35: either the corpus lost its M1/M2 machines or the class parse broke, and either way this test no longer proves the M1/M2 claim (corpus as of 2026-07-13: 295 AppleHPMDevice ports across 91 machines)")
+            #expect(preM3MachinesJoined == preM3MachinesSeen,
+                "\(preM3MachinesSeen - preM3MachinesJoined) M1/M2 machines failed to produce a join map")
         }
     }
 
@@ -247,9 +370,13 @@ struct HPMPortUUIDMapCorpusSweepTests {
     // disk to catch it via the sweep alone.
     @Test("Fixture: MagSafe@1 and USB-C@1 on the same machine keep distinct portKeys")
     func fixtureMagSafeAndUSBCSameNumberDoNotCollide() {
+        // Deliberately the M1/M2 base class: the #195 collision must be kept
+        // apart on every generation, not just M3+.
         let usbC = Probe35Record(label: "Port-USB-C@1", portNumber: 1, isMagSafe: false,
+                                  controllerClass: "AppleHPMDevice",
                                   uuid: "11111111-1111-1111-1111-111111111111")
         let magSafe = Probe35Record(label: "Port-MagSafe 3@1", portNumber: 1, isMagSafe: true,
+                                     controllerClass: "AppleHPMDevice",
                                      uuid: "22222222-2222-2222-2222-222222222222")
         let ports = [usbC, magSafe].enumerated().compactMap { i, r in
             Self.makeHPMInterface(from: r, entryID: UInt64(i + 1))
@@ -257,8 +384,8 @@ struct HPMPortUUIDMapCorpusSweepTests {
         #expect(ports.count == 2)
         let map = HPMPortUUIDMap.from(ports: ports)
         #expect(map.count == 2)
-        #expect(map[HPMPortUUIDMap.normalise(usbC.uuid)] == "2/1")
-        #expect(map[HPMPortUUIDMap.normalise(magSafe.uuid)] == "17/1")
+        #expect(map[HPMPortUUIDMap.normalise(usbC.uuid!)] == "2/1")
+        #expect(map[HPMPortUUIDMap.normalise(magSafe.uuid!)] == "17/1")
     }
 
     @Test("Fixture: a port with no hpmControllerUUID is excluded from the map, not crashed on")

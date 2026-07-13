@@ -269,7 +269,10 @@ public final class AppleHPMInterfaceWatcher: ObservableObject {
     /// returns its `UUID` property. The probe reads `AppleHPMDevice` (the base
     /// class) so it catches both M1/M2 (`AppleHPMDevice` exact) and M3+
     /// (`AppleHPMDeviceHALType3`, a subclass). This matches probe 35's
-    /// class-agnostic sweep (corpus: 265/265 ports have a UUID).
+    /// class-agnostic sweep. Corpus (206 machines, 2026-07-13): **704/704 ports**
+    /// carry a UUID -- 409/409 `AppleHPMDeviceHALType3` and 295/295
+    /// `AppleHPMDevice` -- zero misses. Pinned by `HPMControllerClassGateTests`
+    /// via the shared `wcIsHPMControllerClass` predicate.
     ///
     /// The UUID is an internal in-session join key only. It is stored on
     /// `AppleHPMInterface.hpmControllerUUID` and must never be serialised to
@@ -287,11 +290,11 @@ public final class AppleHPMInterfaceWatcher: ObservableObject {
             var classBuf = [CChar](repeating: 0, count: 128)
             IOObjectGetClass(current, &classBuf)
             let cls = String(cString: classBuf)
-            // Match both the M1/M2 base class and the M3+ subclass. The base
-            // class name is the common prefix, and IOKit conformance checks
-            // cover subclasses, but a name check is sufficient because we only
-            // need to stop at a node that carries the UUID property.
-            if cls == "AppleHPMDevice" || cls.hasPrefix("AppleHPMDeviceHAL") {
+            // Match both the M1/M2 base class and the M3+ subclass. Shared with
+            // `wcHPMControllerUUID` so the two walks can never drift apart on
+            // which classes count; see that predicate for why it must stay
+            // class-agnostic.
+            if wcIsHPMControllerClass(cls) {
                 if let uuid = IORegistryEntryCreateCFProperty(
                     current,
                     "UUID" as CFString,

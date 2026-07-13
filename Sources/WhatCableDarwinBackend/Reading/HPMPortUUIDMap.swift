@@ -27,7 +27,7 @@ public enum HPMPortUUIDMap {
             guard let rawUUID = port.hpmControllerUUID else { continue }
             guard let portKey = port.portKey else { continue }
             let uuid = normalise(rawUUID)
-            guard uuid.count == 32 else { continue }
+            guard isValidNormalised(uuid) else { continue }
             if map[uuid] == nil { map[uuid] = portKey }
         }
         return map
@@ -42,7 +42,7 @@ public enum HPMPortUUIDMap {
     ///
     /// **Do not read that as "M1/M2 have no controller UUID". They do.** The
     /// 206-machine probe-35 corpus shows every `AppleHPMDevice` (M1/M2) port
-    /// carrying one (345/345). This function simply doesn't ask for them, because
+    /// carrying one (295/295). This function simply doesn't ask for them, because
     /// it matches the subclass rather than the `AppleHPMDevice` base class.
     ///
     /// It does not need to. `from(ports:)` is the primary path and it *does* see
@@ -77,7 +77,7 @@ public enum HPMPortUUIDMap {
             // one identifies a PDO option, not the port.
             guard let rawUUID = readString(controller, "UUID") else { continue }
             let uuid = normalise(rawUUID)
-            guard uuid.count == 32 else { continue }
+            guard isValidNormalised(uuid) else { continue }
             guard let portKey = portKey(forController: controller) else { continue }
             // First controller wins on the off chance two report the same UUID.
             if map[uuid] == nil { map[uuid] = portKey }
@@ -161,6 +161,13 @@ public enum HPMPortUUIDMap {
 
     /// Strips dashes and lowercases a UUID string so it matches the SMC's raw
     /// 16-byte `DxUI` rendered as 32 hex chars.
+    /// A normalised UUID is valid only if it is exactly 32 HEX characters.
+    /// Length alone is not enough: a 32-char non-hex string would otherwise
+    /// become a join key (Codex review, PR #403).
+    static func isValidNormalised(_ uuid: String) -> Bool {
+        uuid.count == 32 && uuid.allSatisfy(\.isHexDigit)
+    }
+
     static func normalise(_ uuid: String) -> String {
         uuid.replacingOccurrences(of: "-", with: "").lowercased()
     }

@@ -42,7 +42,9 @@ public struct AppleHPMInterface: Identifiable, Hashable {
     /// The HPM power-controller `UUID` for this physical port, read from the
     /// controller ancestor node (class `AppleHPMDevice` or its subclass
     /// `AppleHPMDeviceHALType3`). Present on 100% of ports across all chip
-    /// families (M1, M2, M3, M4, M5, Intel) per corpus probe 35 (265/265 ports).
+    /// families (M1, M2, M3, M4, M5, Intel) per corpus probe 35: 704/704 ports
+    /// carry one (409 `AppleHPMDeviceHALType3` + 295 `AppleHPMDevice`), 206 machines,
+    /// 2026-07-13. Pinned by `HPMControllerClassGateTests`.
     ///
     /// This is an **internal in-session join key only**. It is never serialised
     /// to JSON or text output and must never appear in `--raw` or `--json`.
