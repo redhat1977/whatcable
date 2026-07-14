@@ -61,6 +61,15 @@ research/customer-probes/*/*.json
 # test). Like probe 01, this one probe-38 file is tracked so the test has a
 # guaranteed fixture in CI; every other probe 38 stays gitignored.
 !research/customer-probes/m3pro_macos26.5.1_h/38_usb_device_tree.json
+# Named-machine fixtures for USBWatcherCorpusSweepTests (ancestor-walk replay
+# through USBWatcher.classifyAncestry): the two Mac Studios pinning the issue
+# #417 embedded-controller misclassification, the M1 mini (same class, FL1100),
+# a real-dock desktop, and the M4 mini on macOS 27 (Tahoe board port node).
+!research/customer-probes/m2max_macos26.5.2/38_usb_device_tree.json
+!research/customer-probes/m4max_macos26.5.1_f/38_usb_device_tree.json
+!research/customer-probes/m1_macos15.7.7_c/38_usb_device_tree.json
+!research/customer-probes/m4pro_macos15.7.7_d/38_usb_device_tree.json
+!research/customer-probes/m4_macos27.0_e/38_usb_device_tree.json
 
 # Python bytecode (from research/build scripts like inspect-probe.py)
 __pycache__/

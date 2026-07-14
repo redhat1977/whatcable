@@ -13,19 +13,21 @@ import Testing
 /// `USBWatcher.controllerInfo`, by walking the IOKit *service-plane* parent
 /// chain of a running `IOUSBHostDevice` looking for a `UsbIOPort` ancestor, a
 /// native (`AppleT*USBXHCI`) vs tunnelled (`AppleUSBXHCITR`) host controller
-/// class, and a `USBPortType` on the nearest hub ancestor. Probe 38
-/// (`38_usb_device_tree`) dumps each device as a **flat record** with only its
-/// `locationID`/VID/PID/class -- no parent chain, no controller class, no
-/// `UsbIOPort` path. `InternalHubPIDCorpusTests`'s doc comment already
-/// establishes this for a different probe (`04_raw_registry_dump`); the same
-/// gap applies here, and it's worse for `isThunderboltTunnelled` (there is no
-/// structural signal left in probe 38 for "reached a tunnelled controller" at
-/// all, not even an approximation).
+/// class, and a `USBPortType` on the nearest hub ancestor.
 ///
-/// So this file does NOT attempt to reproduce `isThunderboltTunnelled`
-/// classification from the corpus -- there is nothing honest to build it
-/// from. It DOES reproduce a defensible approximation of
-/// `isBehindInternalHub` for the one case probe 38 *can* support: locationID
+/// CORRECTION (2026-07-14): an earlier revision of this header claimed probe
+/// 38 dumps flat records with "no parent chain, no controller class, no
+/// UsbIOPort path". That was wrong: probe 38 has recorded the full ancestor
+/// walk (class, locationID, USBPortType, UsbIOPort per hop) since it first
+/// shipped (v1.1.6), and
+/// `Tests/WhatCableDarwinTests/USBWatcherCorpusSweepTests.swift` now replays
+/// those chains through the actual production classifier
+/// (`USBWatcher.classifyAncestry`). That sweep is where the per-device flag
+/// derivation is corpus-tested.
+///
+/// This file lives in Core and cannot import the Darwin backend, so it does
+/// not touch the real flag derivation. It keeps an independent approximation
+/// of `isBehindInternalHub` built from the device records alone: locationID
 /// nesting. A desktop Mac's internal Apple hub enumerates in probe 38 as an
 /// ordinary device (VID `0x05AC`, `bDeviceClass == 9`); everything nested
 /// under it by `USBDevice.parentLocationID`'s hub-nibble walk (the exact

@@ -8,7 +8,9 @@ import WhatCableCore
 public final class USBWatcher: ObservableObject {
     @Published public private(set) var devices: [USBDevice] = []
 
-    private static let log = Logger(subsystem: "uk.whatcable.whatcable", category: "usb")
+    // nonisolated so `classifyAncestry` (a nonisolated static pure function)
+    // can log from off the main actor. Logger is a Sendable struct.
+    nonisolated private static let log = Logger(subsystem: "uk.whatcable.whatcable", category: "usb")
 
     private var notifyPort: IONotificationPortRef?
     private var addedIter: io_iterator_t = 0
@@ -177,16 +179,56 @@ public final class USBWatcher: ObservableObject {
         )
     }
 
-    /// Walks the IOKit parent chain from a USB device collecting these pieces
-    /// of information:
-    ///   - `controllerPortName`: parsed from the first ancestor with a
-    ///     `UsbIOPort` property. These are the `usb-drd*-port-hs/ss` nodes
-    ///     that sit between the device and the `AppleT*USBXHCI` controller.
-    ///     Their `UsbIOPort` value is a registry path ending in the physical
-    ///     port's service name (e.g. ".../Port-USB-C@1").
-    ///   - `busIndex`: upper byte of the XHCI controller's `locationID`,
-    ///     kept as a fallback for older topologies that don't expose
-    ///     `UsbIOPort` (and for the advanced view).
+    /// One hop of the IOService-plane parent walk above a USB device, as
+    /// consumed by `classifyAncestry`. The live walk builds these in
+    /// `collectAncestors`; the corpus sweep rebuilds them from probe 38
+    /// captures (`38_usb_device_tree`), so the exact same classification code
+    /// runs in production and against every recorded real machine.
+    struct USBAncestor: Equatable, Sendable {
+        /// IOKit class name (IOObjectGetClass).
+        let className: String
+        /// The ancestor's `locationID`, when it has one. Captured on every hop
+        /// so the classification can take the bus index from whichever
+        /// controller ends the walk.
+        let locationID: UInt32?
+        /// The ancestor's `UsbIOPort` registry path, already resolved from its
+        /// String/Data raw form via `usbIOPortPath(from:)`. nil when absent.
+        let usbIOPortPath: String?
+        /// The ancestor's `USBPortType`. Only populated when the node conforms
+        /// to `IOUSBHostDevice` (the hubs and devices), mirroring the
+        /// conformance gate the live walk applies before reading the key.
+        let usbPortType: Int?
+    }
+
+    /// The decisions `controllerInfo` derives from the parent walk.
+    /// `reachedNativeController` is exposed alongside the four consumed values
+    /// so tests and sweeps can assert on the gate itself, not just its effect.
+    struct AncestryClassification: Equatable, Sendable {
+        /// Upper byte of the terminating controller's `locationID`, or nil when
+        /// the walk ended without reading one (caller falls back to the
+        /// device's own locationID).
+        let busIndex: Int?
+        /// Physical port service name (e.g. "Port-USB-C@1") from the first
+        /// `UsbIOPort` ancestor, or nil.
+        let portName: String?
+        /// The device reached the Mac over a Thunderbolt PCIe tunnel.
+        let tunnelled: Bool
+        /// The walk ended at a native Apple Silicon controller (`AppleT*USBXHCI`).
+        let reachedNativeController: Bool
+        /// The device is on a desktop Mac's plain-USB built-in port (issue #348).
+        let behindInternalHub: Bool
+    }
+
+    /// Classifies a USB device from its IOService-plane ancestor chain,
+    /// collecting these pieces of information:
+    ///   - `portName`: parsed from the first ancestor with a `UsbIOPort`
+    ///     property. These are the `usb-drd*-port-hs/ss` nodes that sit
+    ///     between the device and the `AppleT*USBXHCI` controller. Their
+    ///     `UsbIOPort` value is a registry path ending in the physical port's
+    ///     service name (e.g. ".../Port-USB-C@1").
+    ///   - `busIndex`: upper byte of the XHCI controller's `locationID`, kept
+    ///     as a fallback for older topologies that don't expose `UsbIOPort`
+    ///     (and for the advanced view).
     ///   - `tunnelled`: the device reached the Mac over a Thunderbolt PCIe
     ///     tunnel. Either the chain runs through `AppleUSBXHCITR`, the native
     ///     USB tunnel (issue #274), or through a Thunderbolt 3 dock's own PCIe
@@ -196,12 +238,10 @@ public final class USBWatcher: ObservableObject {
     ///     controller, is not tunnelled, and finds no `UsbIOPort` ancestor
     ///     (no `Port-USB-C@N` match). See the gate below the loop (issue #348).
     ///
-    /// Walks up to 20 hops to handle devices behind deeper hub chains.
-    private func controllerInfo(for service: io_service_t, fallback locationID: UInt32) -> (Int?, String?, Bool, Bool) {
-        var current = service
-        IOObjectRetain(current)
-        defer { IOObjectRelease(current) }
-
+    /// Pure: no IOKit. This is the seam that makes the walk replayable from
+    /// probe 38 corpus captures (`USBWatcherCorpusSweepTests`); the live half
+    /// is `collectAncestors`, which only gathers, never decides.
+    nonisolated static func classifyAncestry(_ ancestors: [USBAncestor]) -> AncestryClassification {
         var portName: String?
         var bus: Int?
         var tunnelled = false
@@ -217,28 +257,8 @@ public final class USBWatcher: ObservableObject {
         // one behind an external hub (issue #373).
         var hubPortType: Int?
 
-        // Bound the walk so a malformed or cyclic registry can't loop forever.
-        // The real depth from a USB device to its host controller is small (2-4
-        // hops directly attached; a few more behind chained hubs), so 20 is far
-        // beyond anything observed and just acts as a backstop. Hitting it means
-        // the controller was never found, so `portName` / `reachedNativeController`
-        // stay unset and the device fails safe (not classified as front-port).
-        for _ in 0..<20 {
-            var parent: io_service_t = 0
-            guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS else {
-                break
-            }
-            IOObjectRelease(current)
-            current = parent
-
-            if portName == nil,
-               let raw = IORegistryEntryCreateCFProperty(
-                    current,
-                    "UsbIOPort" as CFString,
-                    kCFAllocatorDefault,
-                    0
-               )?.takeRetainedValue(),
-               let portPath = Self.usbIOPortPath(from: raw) {
+        for ancestor in ancestors {
+            if portName == nil, let portPath = ancestor.usbIOPortPath {
                 if let name = Self.portName(fromUSBIOPortPath: portPath) {
                     portName = name
                 } else {
@@ -253,45 +273,28 @@ public final class USBWatcher: ObservableObject {
                 }
             }
 
-            // Capture the `USBPortType` of the nearest USB hub ancestor, the
-            // first one we meet going up. Only `IOUSBHostDevice` nodes (the
-            // hubs and devices) carry this key, so the first ancestor that has
-            // it is the hub this device hangs off. We take only that first one:
-            // a device behind an external hub that is itself plugged into the
-            // Mac's internal hub must read the external hub's value (0), not the
-            // internal one further up the chain (issue #373).
-            if hubPortType == nil,
-               IOObjectConformsTo(current, "IOUSBHostDevice") != 0,
-               let pt = (IORegistryEntryCreateCFProperty(
-                    current,
-                    "USBPortType" as CFString,
-                    kCFAllocatorDefault,
-                    0
-               )?.takeRetainedValue() as? NSNumber)?.intValue {
+            // Take the `USBPortType` of the nearest hub only, the first one
+            // going up: a device behind an external hub that is itself plugged
+            // into the Mac's internal hub must read the external hub's value
+            // (0), not the internal one further up the chain (issue #373).
+            if hubPortType == nil, let pt = ancestor.usbPortType {
                 hubPortType = pt
             }
 
-            var classBuf = [CChar](repeating: 0, count: 128)
-            IOObjectGetClass(current, &classBuf)
-            let className = String(cString: classBuf)
             // The tunnelled host controller for devices behind a Thunderbolt
             // dock or display (issue #274). It plays the same role as the native
             // XHCI controller below, but reached over the TB PCIe tunnel, so we
             // flag the device and stop the walk at it. There is no `UsbIOPort`
             // on this path, so `portName` stays nil and the device matches no
             // physical port.
-            if className.hasPrefix("AppleUSBXHCITR") {
+            if ancestor.className.hasPrefix("AppleUSBXHCITR") {
                 tunnelled = true
-                if let loc = (IORegistryEntryCreateCFProperty(current, "locationID" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? NSNumber)?.uint32Value {
-                    bus = Int((loc >> 24) & 0xFF)
-                }
+                if let loc = ancestor.locationID { bus = Self.busIndex(fromLocationID: loc) }
                 break
             }
-            if className.hasPrefix("AppleT") && className.hasSuffix("USBXHCI") {
+            if ancestor.className.hasPrefix("AppleT") && ancestor.className.hasSuffix("USBXHCI") {
                 reachedNativeController = true
-                if let loc = (IORegistryEntryCreateCFProperty(current, "locationID" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? NSNumber)?.uint32Value {
-                    bus = Int((loc >> 24) & 0xFF)
-                }
+                if let loc = ancestor.locationID { bus = Self.busIndex(fromLocationID: loc) }
                 break
             }
             // A Thunderbolt 3 dock (e.g. CalDigit TS3+) brings its own PCIe USB
@@ -305,8 +308,17 @@ public final class USBWatcher: ObservableObject {
             // Confirmed on TS3+ hardware (m4_macos27.0_c / m1pro_macos26.5.1_i in
             // the customer-probe corpus). We do not read `locationID` here: a
             // tunnelled device is attributed to its port by Thunderbolt topology,
-            // not bus index, so `bus` is left to the fallback below.
-            if Self.isThunderboltDockController(className) {
+            // not bus index, so `bus` is left to the caller's fallback.
+            //
+            // KNOWN MISCLASSIFICATION (issue #417): desktop Macs with extra
+            // built-in plain-USB ports (Mac Studio front ports, Mac mini USB-A)
+            // wire them through an Apple-embedded third-party controller
+            // (`AppleEmbeddedUSBXHCIASMedia3142`, `AppleEmbeddedUSBXHCIFL1100`)
+            // that this rule cannot tell apart from a dock's, so their devices
+            // are wrongly flagged tunnelled and grouped under "reached through
+            // a Thunderbolt dock". Corpus-confirmed on two Mac Studios; pinned
+            // by the sweep tests until the fix lands.
+            if Self.isThunderboltDockController(ancestor.className) {
                 tunnelled = true
                 break
             }
@@ -319,12 +331,101 @@ public final class USBWatcher: ObservableObject {
             underInternalHub: hubPortType == Self.internalHubPortType
         )
 
-        if bus == nil {
-            // Fallback: the device's own locationID upper byte mirrors its
-            // controller's locationID upper byte on Apple Silicon.
-            bus = Int((locationID >> 24) & 0xFF)
+        return AncestryClassification(
+            busIndex: bus,
+            portName: portName,
+            tunnelled: tunnelled,
+            reachedNativeController: reachedNativeController,
+            behindInternalHub: behindInternalHub
+        )
+    }
+
+    /// True when `className` is a host controller that ends the ancestor walk
+    /// (native, tunnel, or dock: the same three cases `classifyAncestry`
+    /// breaks on, composed from the same predicates so the two can't drift).
+    /// Used by `collectAncestors` to stop gathering at the controller, exactly
+    /// where the pure classification stops reading.
+    nonisolated static func isWalkTerminator(_ className: String) -> Bool {
+        className.hasPrefix("AppleUSBXHCITR")
+            || (className.hasPrefix("AppleT") && className.hasSuffix("USBXHCI"))
+            || isThunderboltDockController(className)
+    }
+
+    /// Live half of the ancestor walk: gathers IOService-plane parents of a
+    /// USB device into `USBAncestor` records, reading only the properties
+    /// `classifyAncestry` consumes, and stopping at the first host controller
+    /// (`isWalkTerminator`), which is included as the final record. Gathers,
+    /// never decides: all classification logic lives in the pure function so
+    /// the corpus sweep can run the real thing.
+    ///
+    /// The 20-hop bound mirrors the old in-line walk: the real depth from a
+    /// USB device to its host controller is small (2-4 hops directly attached;
+    /// a few more behind chained hubs), so 20 is far beyond anything observed
+    /// and just acts as a backstop against a malformed or cyclic registry.
+    private static func collectAncestors(of service: io_service_t) -> [USBAncestor] {
+        var ancestors: [USBAncestor] = []
+        var current = service
+        IOObjectRetain(current)
+        defer { IOObjectRelease(current) }
+
+        for _ in 0..<20 {
+            var parent: io_service_t = 0
+            guard IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS else {
+                break
+            }
+            IOObjectRelease(current)
+            current = parent
+
+            var classBuf = [CChar](repeating: 0, count: 128)
+            let className = IOObjectGetClass(current, &classBuf) == KERN_SUCCESS
+                ? String(cString: classBuf)
+                : ""
+
+            let locationID = (IORegistryEntryCreateCFProperty(
+                current, "locationID" as CFString, kCFAllocatorDefault, 0
+            )?.takeRetainedValue() as? NSNumber)?.uint32Value
+
+            var usbIOPortPath: String?
+            if let raw = IORegistryEntryCreateCFProperty(
+                current, "UsbIOPort" as CFString, kCFAllocatorDefault, 0
+            )?.takeRetainedValue() {
+                usbIOPortPath = Self.usbIOPortPath(from: raw)
+            }
+
+            // Conformance gate: only `IOUSBHostDevice` nodes (the hubs and
+            // devices) carry a meaningful `USBPortType`; reading it elsewhere
+            // would let an unrelated node shadow the nearest hub's value.
+            var usbPortType: Int?
+            if IOObjectConformsTo(current, "IOUSBHostDevice") != 0 {
+                usbPortType = (IORegistryEntryCreateCFProperty(
+                    current, "USBPortType" as CFString, kCFAllocatorDefault, 0
+                )?.takeRetainedValue() as? NSNumber)?.intValue
+            }
+
+            ancestors.append(USBAncestor(
+                className: className,
+                locationID: locationID,
+                usbIOPortPath: usbIOPortPath,
+                usbPortType: usbPortType
+            ))
+
+            // Stop at the host controller, like the old in-line walk did:
+            // nothing above it is read, live or replayed.
+            if Self.isWalkTerminator(className) { break }
         }
-        return (bus, portName, tunnelled, behindInternalHub)
+        return ancestors
+    }
+
+    /// Walks the IOKit parent chain from a USB device and classifies it. See
+    /// `classifyAncestry` for what is derived and how; this wrapper only pairs
+    /// the live collector with the pure classifier and applies the bus-index
+    /// fallback.
+    private func controllerInfo(for service: io_service_t, fallback locationID: UInt32) -> (Int?, String?, Bool, Bool) {
+        let classification = Self.classifyAncestry(Self.collectAncestors(of: service))
+        // Fallback: the device's own locationID upper byte mirrors its
+        // controller's locationID upper byte on Apple Silicon.
+        let bus = classification.busIndex ?? Self.busIndex(fromLocationID: locationID)
+        return (bus, classification.portName, classification.tunnelled, classification.behindInternalHub)
     }
 
     /// `USBPortType` value Apple reports for a port that is internal to the Mac

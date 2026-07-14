@@ -102,14 +102,24 @@ static void dumpAncestors(io_service_t device) {
 
         long long loc = readNumber(current, CFSTR("locationID"), -1);
         long long portType = readNumber(current, CFSTR("USBPortType"), -1);
+        // The classifier only honours USBPortType on nodes conforming to
+        // IOUSBHostDevice (the hubs and devices). Record that gate explicitly
+        // so an offline replay never has to infer it from the class name:
+        // today only the exact class "IOUSBHostDevice" carries the key
+        // (766/766 ancestor lines across the corpus), but a subclass could.
+        int usbHostDevice = IOObjectConformsTo(current, "IOUSBHostDevice") ? 1 : 0;
         // 512 so a deep nested-hub UsbIOPort path is never truncated: the
         // classifier reads the "Port-*" tail, which a short buffer could drop.
         char ioPort[512];
         int hasPort = readUsbIOPort(current, ioPort, sizeof(ioPort));
 
+        // UsbIOPort stays the LAST token on purpose: its value is a registry
+        // path, so a parser that takes the rest of the line after "UsbIOPort="
+        // must keep working. New tokens go before it, never after.
         printf("    [%d] class=%s", hop, cls);
         if (loc >= 0) printf(" locationID=0x%llx", (unsigned long long)loc);
         if (portType >= 0) printf(" USBPortType=%lld", portType);
+        if (usbHostDevice) printf(" usbHostDevice=1");
         if (hasPort && ioPort[0]) printf(" UsbIOPort=%s", ioPort);
         printf("\n");
 
