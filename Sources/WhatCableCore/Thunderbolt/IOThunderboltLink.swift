@@ -173,6 +173,13 @@ public enum AdapterType: Hashable {
     case pcieUp         // 0x100102
     case usb3Down       // 0x200101
     case usb3Up         // 0x200102
+    /// TB5-era USB tunneling adapter, distinct from the USB3 adapter
+    /// types above. Confirmed on an M5 Pro + Ugreen TB5 dock (issue
+    /// #52 paste-back, `research/dumps/tb-fabric/052-nofr1ends-m5pro-
+    /// ugreen-tb5-dock.md` lines 215-217): `Adapter Type = 2162945`,
+    /// `Description = "USB Gen T Adapter"`.
+    case usbGenTDown     // 0x210101
+    case usbGenTUp       // 0x210102
     case other(UInt32)
 
     public static func from(rawValue: UInt32) -> AdapterType {
@@ -186,6 +193,8 @@ public enum AdapterType: Hashable {
         case 0x100102: return .pcieUp
         case 0x200101: return .usb3Down
         case 0x200102: return .usb3Up
+        case 0x210101: return .usbGenTDown
+        case 0x210102: return .usbGenTUp
         default: return .other(rawValue)
         }
     }
@@ -362,6 +371,38 @@ public struct IOThunderboltSwitch: Identifiable, Hashable {
     public var isAwake: Bool { currentPowerState == 2 }
 }
 
+/// One row of an adapter's `Hop Table`. A Thunderbolt link multiplexes
+/// several tunnels (DisplayPort video, USB3, PCIe) over the same physical
+/// lane; each row describes how this adapter forwards one tunnel to the
+/// next hop in the fabric. `pathUUID` is the join key: the same UUID
+/// recurs on every adapter a tunnel crosses, across switches, so matching
+/// it against another adapter's hop table pins where a tunnel enters and
+/// exits the fabric. Verified live: a host-root lane port's hop table
+/// listed 3 paths; one of them also appeared on a downstream dock's DP
+/// adapter, pinning the monitor's video exit point. See
+/// `ThunderboltTopology.tunnels(from:in:)` in `TunnelPath.swift` for the
+/// grouping logic that consumes this.
+public struct HopTableEntry: Hashable {
+    /// Sequence number of this row within the adapter's hop table.
+    public let counter: Int
+    /// This adapter's hop ID for the tunnel (the inbound leg).
+    public let hopID: Int
+    /// The hop ID this row forwards to on the next adapter.
+    public let dstHopID: Int
+    /// The port number this row forwards to.
+    public let dstPort: Int
+    /// The tunnel's join key. Recurs on every adapter the tunnel crosses.
+    public let pathUUID: String
+
+    public init(counter: Int, hopID: Int, dstHopID: Int, dstPort: Int, pathUUID: String) {
+        self.counter = counter
+        self.hopID = hopID
+        self.dstHopID = dstHopID
+        self.dstPort = dstPort
+        self.pathUUID = pathUUID
+    }
+}
+
 /// One adapter on a Thunderbolt switch. Could be a physical TB lane port
 /// (with link-state fields) or a protocol-tunnel adapter (DP, PCIe, USB3).
 public struct IOThunderboltPort: Hashable {
@@ -420,6 +461,10 @@ public struct IOThunderboltPort: Hashable {
     public let vendorID: Int?
     /// Controller device ID.
     public let deviceID: Int?
+    /// Tunnel routing rows for this adapter. Empty when the property is
+    /// absent or the adapter carries no active tunnel. See
+    /// `HopTableEntry` for the join-key semantics.
+    public let hopTable: [HopTableEntry]
 
     public struct BufferAllocation: Hashable {
         public let maxUSB3: Int
@@ -457,7 +502,8 @@ public struct IOThunderboltPort: Hashable {
         trmPolicy: String? = nil,
         thunderboltVersion: Int? = nil,
         vendorID: Int? = nil,
-        deviceID: Int? = nil
+        deviceID: Int? = nil,
+        hopTable: [HopTableEntry] = []
     ) {
         self.portNumber = portNumber
         self.socketID = socketID
@@ -484,6 +530,7 @@ public struct IOThunderboltPort: Hashable {
         self.thunderboltVersion = thunderboltVersion
         self.vendorID = vendorID
         self.deviceID = deviceID
+        self.hopTable = hopTable
     }
 
     /// Build a port from a raw IOKit property dictionary.
@@ -529,6 +576,33 @@ public struct IOThunderboltPort: Hashable {
             bufferAlloc = nil
         }
 
+        // "Hop Table" is an array of dictionaries when populated; absent
+        // or empty on idle adapters. Read it as `[Any]` first and cast each
+        // element individually, rather than `[[String: Any]]` for the whole
+        // array: a single non-dict element (e.g. IOKit bridging a row that
+        // failed to fully stringify) would otherwise make the whole-array
+        // cast fail and silently drop every entry, good rows included.
+        // Skip any entry missing a required key, or whose Path isn't
+        // exactly 36 characters (a well-formed UUID string), rather than
+        // crashing or grouping on a malformed row. The 36-char check keeps
+        // production consistent with the corpus sweep's independent
+        // UUID-shaped regex (`TunnelPathCorpusTests.uuidPathRegex`).
+        let hopTable: [HopTableEntry] = {
+            guard let raw = read("Hop Table") as? [Any] else { return [] }
+            return raw.compactMap { element -> HopTableEntry? in
+                guard let entry = element as? [String: Any] else { return nil }
+                guard
+                    let counter = (entry["Counter"] as? NSNumber)?.intValue,
+                    let hopID = (entry["Hop ID"] as? NSNumber)?.intValue,
+                    let dstHopID = (entry["Dst Hop ID"] as? NSNumber)?.intValue,
+                    let dstPort = (entry["Dst Port"] as? NSNumber)?.intValue,
+                    let path = entry["Path"] as? String,
+                    path.count == 36
+                else { return nil }
+                return HopTableEntry(counter: counter, hopID: hopID, dstHopID: dstHopID, dstPort: dstPort, pathUUID: path)
+            }
+        }()
+
         return IOThunderboltPort(
             portNumber: portNumNum.intValue,
             socketID: socketID,
@@ -554,7 +628,8 @@ public struct IOThunderboltPort: Hashable {
             trmPolicy: read("TRM Policy") as? String,
             thunderboltVersion: (read("Thunderbolt Version") as? NSNumber)?.intValue,
             vendorID: (read("Vendor ID") as? NSNumber)?.intValue,
-            deviceID: (read("Device ID") as? NSNumber)?.intValue
+            deviceID: (read("Device ID") as? NSNumber)?.intValue,
+            hopTable: hopTable
         )
     }
 

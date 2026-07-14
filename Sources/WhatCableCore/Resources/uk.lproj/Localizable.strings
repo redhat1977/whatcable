@@ -405,6 +405,8 @@
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "Підключіть монітор через USB-C або Thunderbolt, щоб побачити, що передає канал.";
 "%@ port %lld" = "%@ порт %lld";
 "Display" = "Дисплей";
+"Display: %@" = "Дисплей: %@";
+"Display: %@ · video output %lld" = "Дисплей: %1$@ · відеовихід %2$lld";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "нативний %lldHz";
 "Top mode needs" = "Найкращий режим потребує";
@@ -473,6 +475,11 @@
 "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below." = "Дисплей підключено. З цього порту живлення не подається. Вхідне живлення відображається в розділі «Вхідне живлення системи» нижче.";
 "Connected to %lld Thunderbolt devices: %@" = "Підключено до %1$lld пристроїв Thunderbolt: %2$@";
 "Thunderbolt fabric:" = "Топологія Thunderbolt:";
+"Active tunnels:" = "Активні тунелі:";
+"Video" = "Відео";
+"USB data" = "дані USB";
+"PCIe data" = "дані PCIe";
+"adapter %lld" = "адаптер %lld";
 
 /* Active-layout contradiction note (DAR-30) - placeholder, see en.lproj */
 "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)" = "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)";

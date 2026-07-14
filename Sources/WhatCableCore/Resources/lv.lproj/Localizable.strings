@@ -405,6 +405,8 @@
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "Pievienojiet monitoru caur USB-C vai Thunderbolt, lai redzētu, ko savienojums nodrošina.";
 "%@ port %lld" = "%@ ports %lld";
 "Display" = "Monitors";
+"Display: %@" = "Monitors: %@";
+"Display: %@ · video output %lld" = "Monitors: %1$@ · video izeja %2$lld";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "vietējs %lld Hz";
 "Top mode needs" = "Augstākajam režīmam nepieciešams";
@@ -473,6 +475,11 @@
 "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below." = "Displejs pievienots. Caur šo portu jauda netiek izvadīta. Ienākošā jauda redzama zemāk sadaļā «Sistēmas strāvas ievade».";
 "Connected to %lld Thunderbolt devices: %@" = "Savienots ar %1$lld Thunderbolt ierīcēm: %2$@";
 "Thunderbolt fabric:" = "Thunderbolt tīkls:";
+"Active tunnels:" = "Aktīvie tuneļi:";
+"Video" = "Video";
+"USB data" = "USB dati";
+"PCIe data" = "PCIe dati";
+"adapter %lld" = "adapteris %lld";
 
 /* Active-layout contradiction note (DAR-30) - placeholder, see en.lproj */
 "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)" = "E-marķieris ziņo par pasīvu, bet satur aktīvā kabeļa struktūru (iespējams, nepareizi ieprogrammēts e-marķieris)";

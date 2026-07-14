@@ -405,6 +405,8 @@
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "USB-C나 Thunderbolt로 모니터를 연결하면 링크가 무엇을 전달하는지 확인할 수 있어요.";
 "%@ port %lld" = "%1$@ 포트 %2$lld";
 "Display" = "디스플레이";
+"Display: %@" = "디스플레이: %@";
+"Display: %@ · video output %lld" = "디스플레이: %1$@ · 영상 출력 %2$lld";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "네이티브 %lldHz";
 "Top mode needs" = "최고 모드에 필요한 값";
@@ -473,6 +475,11 @@
 "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below." = "디스플레이가 연결되어 있어요. 이 포트로는 전력이 나가지 않습니다. 들어오는 전력은 아래 ‘시스템 전력 입력’에 표시됩니다.";
 "Connected to %lld Thunderbolt devices: %@" = "%1$lld개의 Thunderbolt 기기에 연결됨: %2$@";
 "Thunderbolt fabric:" = "Thunderbolt 패브릭:";
+"Active tunnels:" = "활성 터널:";
+"Video" = "영상";
+"USB data" = "USB 데이터";
+"PCIe data" = "PCIe 데이터";
+"adapter %lld" = "어댑터 %lld";
 
 /* Active-layout contradiction note (DAR-30) - placeholder, see en.lproj */
 "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)" = "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)";

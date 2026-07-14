@@ -406,6 +406,8 @@
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "Մոնիտոր միացրեք USB-C կամ Thunderbolt-ով՝ տեսնելու, թե ինչ է տրամադրում կապը:";
 "%@ port %lld" = "%@ նավահ. %lld";
 "Display" = "Էկրան";
+"Display: %@" = "Էկրան՝ %@";
+"Display: %@ · video output %lld" = "Էկրան՝ %1$@ · Տեսանյութի ելք %2$lld";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "բնօրինակ %lld Hz";
 "Top mode needs" = "Ամենաբ. ռեժ. պահանջում է";
@@ -474,6 +476,11 @@
 "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below." = "Էկրանը միացված է։ Այս պորտից հզորություն չի ուղարկվում։ Մուտքային հզորությունը ցուցադրվում է ստորև՝ «Համակարգի սնուցման մուտք» բաժնում։";
 "Connected to %lld Thunderbolt devices: %@" = "Միացված է %1$lld Thunderbolt սարքերի՝ %2$@";
 "Thunderbolt fabric:" = "Thunderbolt կառուցվածք՝";
+"Active tunnels:" = "Ակտիվ թունելներ՝";
+"Video" = "Տեսանյութ";
+"USB data" = "USB տվյալներ";
+"PCIe data" = "PCIe տվյալներ";
+"adapter %lld" = "ադապտեր %lld";
 
 /* Active-layout contradiction note (DAR-30) - placeholder, see en.lproj */
 "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)" = "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)";

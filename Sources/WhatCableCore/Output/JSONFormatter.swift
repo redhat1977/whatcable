@@ -625,6 +625,8 @@ private struct IOThunderboltPortDTO: Codable {
         case .pcieUp: return "pcieUp"
         case .usb3Down: return "usb3Down"
         case .usb3Up: return "usb3Up"
+        case .usbGenTDown: return "usbGenTDown"
+        case .usbGenTUp: return "usbGenTUp"
         case .other(let raw): return "other(0x\(String(raw, radix: 16)))"
         }
     }

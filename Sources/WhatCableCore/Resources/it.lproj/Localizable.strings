@@ -410,6 +410,8 @@
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "Per vedere cosa offre il collegamento collega un monitor tramite USB-C o Thunderbolt.";
 "%@ port %lld" = "%@ porta %lld";
 "Display" = "Schermo";
+"Display: %@" = "Schermo: %@";
+"Display: %@ · video output %lld" = "Schermo: %1$@ · uscita video %2$lld";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "nativo %lldHz";
 "Top mode needs" = "Esige modalità superiore";
@@ -478,6 +480,11 @@
 "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below." = "Schermo collegato. Questa porta non eroga alimentazione. L'alimentazione in ingresso è visualizzata qui sotto in 'Ingresso alimentazione sistema'.";
 "Connected to %lld Thunderbolt devices: %@" = "Connesso a %1$lld dispositivi Thunderbolt: %2$@";
 "Thunderbolt fabric:" = "Topologia Thunderbolt:";
+"Active tunnels:" = "Tunnel attivi:";
+"Video" = "Video";
+"USB data" = "dati USB";
+"PCIe data" = "dati PCIe";
+"adapter %lld" = "adattatore %lld";
 
 /* Active-layout contradiction note (DAR-30). The e-marker's ID Header says passive
    but VDO[3] has the SOP'' Controller Present bit set, which only exists in the

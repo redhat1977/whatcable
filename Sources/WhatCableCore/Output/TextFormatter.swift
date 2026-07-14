@@ -268,16 +268,38 @@ public enum TextFormatter {
                     out += "\(indent)\(prefix) \(name)\(suffix)\n"
                 }
             }
+
+            // Active tunnels: the cross-cable DisplayPort/USB/PCIe tunnels
+            // multiplexed over this fabric (Phase B of the TB link tree root
+            // project). Shares ActiveTunnelPresentation with the app's
+            // technical details view so both surfaces render identical text.
+            let tunnels = ThunderboltTopology.tunnels(from: root, in: thunderboltSwitches)
+            let tunnelLines = ActiveTunnelPresentation.lines(tunnels: tunnels, switches: thunderboltSwitches, bundle: _coreLocalizedBundle)
+            if !tunnelLines.isEmpty {
+                out += "\n" + ANSI.wrap(ANSI.bold, String(localized: "Active tunnels:", bundle: _coreLocalizedBundle)) + "\n"
+                for line in tunnelLines {
+                    out += "  " + ANSI.wrap(ANSI.gray, "•") + " \(line)\n"
+                }
+            }
         }
 
-        if !usbDevices.isEmpty {
-            let tree = USBDeviceNode.flatten(USBDeviceNode.buildTree(from: usbDevices))
+        // Rows come from ConnectedDeviceTree so the CLI and the menu bar app
+        // render the identical tree: when a Thunderbolt device is downstream
+        // it becomes the root row (with its live link speed) and monitors +
+        // USB devices indent under it; otherwise the plain USB tree renders
+        // exactly as before.
+        let connectedRows = ConnectedDeviceTree.rows(
+            devices: usbDevices,
+            port: port,
+            thunderboltSwitches: thunderboltSwitches,
+            displayPorts: displayPorts
+        )
+        if !connectedRows.isEmpty {
             out += "\n" + ANSI.wrap(ANSI.bold, String(localized: "Connected devices:", bundle: _coreLocalizedBundle)) + "\n"
-            for node in tree {
-                let indent = String(repeating: "  ", count: node.depth + 1)
-                let name = node.device.productName ?? String(localized: "Unknown", bundle: _coreLocalizedBundle)
-                let prefix = node.depth > 0 ? "\u{21B3}" : ANSI.wrap(ANSI.gray, "\u{2022}")
-                out += "\(indent)\(prefix) \(name) - \(node.device.speedLabel)\n"
+            for row in connectedRows {
+                let indent = String(repeating: "  ", count: row.depth + 1)
+                let prefix = row.depth > 0 ? "\u{21B3}" : ANSI.wrap(ANSI.gray, "\u{2022}")
+                out += "\(indent)\(prefix) \(row.label)\n"
             }
         }
 

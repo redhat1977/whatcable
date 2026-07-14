@@ -645,6 +645,30 @@ struct PortCard: View {
         .padding(.top, 4)
     }
 
+    /// The "Connected devices" list built from pre-labelled rows
+    /// (`ConnectedDeviceTree`), so the app and the CLI render the identical
+    /// tree: the Thunderbolt device as root with its live link speed, then
+    /// monitors and USB devices indented under it.
+    @ViewBuilder
+    private func rowTree(_ rows: [ConnectedDeviceTree.Row], title: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .scaledFont(.subheadline, weight: .semibold)
+                .foregroundStyle(.secondary)
+            // Offset-keyed: rows are value snapshots rebuilt on every state
+            // change, and two identical monitors would collide on a
+            // label-derived id.
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                let prefix = row.depth > 0 ? "\u{21B3} " : "\u{2022} "
+                Text(verbatim: "\(prefix)\(row.label)")
+                    .scaledFont(.callout)
+                    .padding(.leading, CGFloat(row.depth) * 16)
+            }
+        }
+        .padding(.leading, 48)
+        .padding(.top, 4)
+    }
+
     private var cableEmarker: USBPDSOP? {
         identities.first { $0.endpoint == .sopPrime || $0.endpoint == .sopDoublePrime }
     }
@@ -769,8 +793,14 @@ struct PortCard: View {
                 .padding(.top, 4)
             }
 
-            if !devices.isEmpty {
-                deviceTree(devices, title: String(localized: "Connected devices", bundle: _appLocalizedBundle))
+            let connectedRows = ConnectedDeviceTree.rows(
+                devices: devices,
+                port: port,
+                thunderboltSwitches: thunderboltSwitches,
+                displayPorts: displayPorts
+            )
+            if !connectedRows.isEmpty {
+                rowTree(connectedRows, title: String(localized: "Connected devices", bundle: _appLocalizedBundle))
             }
 
             if !tunnelledDevices.isEmpty {
@@ -810,7 +840,8 @@ struct PortCard: View {
                     port: port,
                     cableEmarker: cableEmarker,
                     thunderboltRoot: thunderboltRoot,
-                    thunderboltTree: thunderboltTree
+                    thunderboltTree: thunderboltTree,
+                    thunderboltSwitches: thunderboltSwitches
                 )
             }
         }
@@ -1078,6 +1109,10 @@ struct AdvancedPortDetails: View {
     let cableEmarker: USBPDSOP?
     let thunderboltRoot: IOThunderboltSwitch?
     let thunderboltTree: [IOThunderboltSwitchNode]
+    /// Full live switch list, needed (beyond `thunderboltRoot`/`thunderboltTree`)
+    /// to resolve `ActiveTunnelPresentation`'s tunnel terminal switches, which
+    /// can sit anywhere in the fabric, not just on the direct root-to-leaf path.
+    let thunderboltSwitches: [IOThunderboltSwitch]
     @Environment(\.fontScale) private var fontScale
 
     var body: some View {
@@ -1100,6 +1135,23 @@ struct AdvancedPortDetails: View {
             }
             if let root = thunderboltRoot, !thunderboltTree.isEmpty {
                 ThunderboltFabricSection(root: root, nodes: thunderboltTree)
+            }
+            if let root = thunderboltRoot {
+                // Bundle is Core's, not the app's: ActiveTunnelPresentation's
+                // strings ("Video" / "USB data" / "adapter %lld" / the
+                // "Active tunnels:" header reused below) live in
+                // WhatCableCore's Localizable.strings, the same catalog the
+                // CLI reads, so both surfaces render identical text without
+                // a second app-bundle copy of the same keys.
+                let tunnels = ThunderboltTopology.tunnels(from: root, in: thunderboltSwitches)
+                let tunnelLines = ActiveTunnelPresentation.lines(tunnels: tunnels, switches: thunderboltSwitches, bundle: _coreLocalizedBundle)
+                if !tunnelLines.isEmpty {
+                    group(String(localized: "Active tunnels:", bundle: _coreLocalizedBundle)) {
+                        ForEach(Array(tunnelLines.enumerated()), id: \.offset) { _, line in
+                            Text(verbatim: line).scaledFont(.caption, design: .monospaced)
+                        }
+                    }
+                }
             }
             let rawCount = port.redactedRawProperties.count
             DisclosureGroup(String(localized: "All raw IOKit properties (\(rawCount))", bundle: _appLocalizedBundle)) {

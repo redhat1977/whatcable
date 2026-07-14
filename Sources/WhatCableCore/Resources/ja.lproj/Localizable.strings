@@ -407,6 +407,8 @@
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "USB-C または Thunderbolt でモニターを接続すると、リンクの状態を確認できます。";
 "%@ port %lld" = "%@ ポート %lld";
 "Display" = "ディスプレイ";
+"Display: %@" = "ディスプレイ: %@";
+"Display: %@ · video output %lld" = "ディスプレイ: %1$@ · 映像出力 %2$lld";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "ネイティブ %lld Hz";
 "Top mode needs" = "最高モードに必要な帯域幅";
@@ -475,6 +477,11 @@
 "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below." = "ディスプレイが接続されています。このポートからは給電されていません。入力される電力は下の「システム電源入力」に表示されます。";
 "Connected to %lld Thunderbolt devices: %@" = "%1$lld台のThunderboltデバイスに接続: %2$@";
 "Thunderbolt fabric:" = "Thunderboltファブリック:";
+"Active tunnels:" = "アクティブなトンネル:";
+"Video" = "映像";
+"USB data" = "USBデータ";
+"PCIe data" = "PCIeデータ";
+"adapter %lld" = "アダプタ %lld";
 
 /* Active-layout contradiction note (DAR-30) - placeholder, see en.lproj */
 "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)" = "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)";

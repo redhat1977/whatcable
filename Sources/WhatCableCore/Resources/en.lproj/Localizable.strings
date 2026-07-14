@@ -410,6 +410,8 @@
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering.";
 "%@ port %lld" = "%@ port %lld";
 "Display" = "Display";
+"Display: %@" = "Display: %@";
+"Display: %@ · video output %lld" = "Display: %1$@ · video output %2$lld";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "native %lldHz";
 "Top mode needs" = "Top mode needs";
@@ -478,6 +480,14 @@
 "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below." = "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below.";
 "Connected to %lld Thunderbolt devices: %@" = "Connected to %1$lld Thunderbolt devices: %2$@";
 "Thunderbolt fabric:" = "Thunderbolt fabric:";
+
+/* Active tunnels (TB link tree root, Phase B): cross-cable DisplayPort/USB/PCIe
+   tunnels multiplexed over the fabric, e.g. "Video → LG UltraFine · adapter 3". */
+"Active tunnels:" = "Active tunnels:";
+"Video" = "Video";
+"USB data" = "USB data";
+"PCIe data" = "PCIe data";
+"adapter %lld" = "adapter %lld";
 
 /* Active-layout contradiction note (DAR-30). The e-marker's ID Header says passive
    but VDO[3] has the SOP'' Controller Present bit set, which only exists in the

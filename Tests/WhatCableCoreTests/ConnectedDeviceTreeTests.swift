@@ -1,0 +1,661 @@
+import Foundation
+import Testing
+@testable import WhatCableCore
+
+/// Unit tests for `ConnectedDeviceTree.rows`
+/// (`Sources/WhatCableCore/USB/ConnectedDeviceTree.swift`): the shared
+/// "Connected devices" row builder that roots the USB tree under the
+/// downstream Thunderbolt device (with its live link speed) when one is
+/// present, and renders the plain USB tree unchanged when not.
+///
+/// The corpus-replay sweep for the no-Thunderbolt path lives at the bottom
+/// of this file; the dock-present path uses hand-built switch fixtures
+/// because no test-kit probe captures `IOThunderboltSwitch` dumps.
+@Suite("ConnectedDeviceTree rows")
+struct ConnectedDeviceTreeTests {
+
+    // MARK: - Fixtures
+
+    /// Active USB-C data port at socket `@4`. Same proven-compiling
+    /// `AppleHPMInterface` init shape as the DataLinkDiagnostic fixture.
+    private func makePort(
+        serviceName: String = "Port-USB-C@4",
+        transportsSupported: [String] = ["CC", "USB2", "USB3", "CIO", "DisplayPort"]
+    ) -> AppleHPMInterface {
+        AppleHPMInterface(
+            id: 1,
+            serviceName: serviceName,
+            className: "AppleHPMInterfaceType10",
+            portDescription: nil,
+            portTypeDescription: "USB-C",
+            portNumber: 4,
+            connectionActive: true,
+            activeCable: nil,
+            opticalCable: nil,
+            usbActive: nil,
+            superSpeedActive: nil,
+            usbModeType: nil,
+            usbConnectString: nil,
+            transportsSupported: transportsSupported,
+            transportsActive: ["CC", "USB3", "CIO"],
+            transportsProvisioned: [],
+            plugOrientation: nil,
+            plugEventCount: nil,
+            connectionCount: nil,
+            overcurrentCount: nil,
+            pinConfiguration: [:],
+            powerCurrentLimits: [],
+            firmwareVersion: nil,
+            bootFlagsHex: nil,
+            rawProperties: [:]
+        )
+    }
+
+    private func lanePort(
+        speed: LinkGeneration?,
+        widthRaw: UInt8,
+        socketID: String? = nil,
+        portNumber: Int = 1,
+        hopTable: [HopTableEntry] = []
+    ) -> IOThunderboltPort {
+        let speedRaw: UInt8
+        switch speed {
+        case .tb3: speedRaw = 0x8
+        case .usb4Tb4: speedRaw = 0x4
+        case .tb5: speedRaw = 0x2
+        default: speedRaw = 0x0
+        }
+        return IOThunderboltPort(
+            portNumber: portNumber,
+            socketID: socketID,
+            adapterType: .lane,
+            currentSpeed: LinkGeneration.from(rawSpeedCode: speedRaw),
+            currentWidth: LinkWidth(rawValue: widthRaw),
+            targetWidth: nil,
+            rawTargetSpeed: nil,
+            linkBandwidthRaw: nil,
+            hopTable: hopTable
+        )
+    }
+
+    /// A DisplayPort tunnel adapter (not a lane), used to build cross-cable
+    /// video tunnels: pair with `lanePort`'s `hopTable` on the host root
+    /// carrying the same `pathUUID`.
+    private func dpPort(portNumber: Int, hopTable: [HopTableEntry]) -> IOThunderboltPort {
+        IOThunderboltPort(
+            portNumber: portNumber,
+            socketID: nil,
+            adapterType: .dpIn,
+            currentSpeed: nil,
+            currentWidth: nil,
+            targetWidth: nil,
+            rawTargetSpeed: nil,
+            linkBandwidthRaw: nil,
+            hopTable: hopTable
+        )
+    }
+
+    private func hopEntry(pathUUID: String, counter: Int = 0) -> HopTableEntry {
+        HopTableEntry(counter: counter, hopID: 8, dstHopID: 8, dstPort: 1, pathUUID: pathUUID)
+    }
+
+    /// Host root whose lane port carries `Socket ID == socketID`, matching
+    /// the `@N` suffix on the port's serviceName. `laneHopTable` lets a test
+    /// put a tunnel's path UUID directly on the root's own lane, the shape a
+    /// real cross-cable tunnel takes (see `ActiveTunnelPresentationTests`).
+    private func hostRoot(socketID: String = "4", laneHopTable: [HopTableEntry] = []) -> IOThunderboltSwitch {
+        IOThunderboltSwitch(
+            id: 100,
+            className: "IOThunderboltSwitchType5",
+            vendorID: 1452,
+            vendorName: "Apple Inc.",
+            modelName: "Mac",
+            routerID: 0,
+            depth: 0,
+            routeString: 0,
+            upstreamPortNumber: 0,
+            maxPortNumber: 8,
+            supportedSpeed: SupportedSpeedMask(rawValue: 0xC),
+            ports: [lanePort(speed: .usb4Tb4, widthRaw: 0x2, socketID: socketID, hopTable: laneHopTable)],
+            parentSwitchUID: nil
+        )
+    }
+
+    /// Downstream device switch (a dock) whose lane carries the given link.
+    private func dockSwitch(
+        id: Int64 = 200,
+        parent: Int64 = 100,
+        vendor: String = "Ugreen Group Limited",
+        model: String = "TBT5 Docking Station 10-in-1",
+        speed: LinkGeneration? = .usb4Tb4,
+        widthRaw: UInt8 = 0x2,
+        ports: [IOThunderboltPort]? = nil
+    ) -> IOThunderboltSwitch {
+        IOThunderboltSwitch(
+            id: id,
+            className: "IOThunderboltSwitchType7",
+            vendorID: 0x2B89,
+            vendorName: vendor,
+            modelName: model,
+            routerID: 1,
+            depth: 1,
+            routeString: 1,
+            upstreamPortNumber: 1,
+            maxPortNumber: 8,
+            supportedSpeed: SupportedSpeedMask(rawValue: 0xE),
+            ports: ports ?? [lanePort(speed: speed, widthRaw: widthRaw)],
+            parentSwitchUID: parent
+        )
+    }
+
+    private func device(
+        id: UInt64,
+        locationID: UInt32,
+        name: String?,
+        speedRaw: UInt8
+    ) -> USBDevice {
+        USBDevice(
+            id: id,
+            locationID: locationID,
+            vendorID: 0x1234,
+            productID: 0x5678,
+            vendorName: nil,
+            productName: name,
+            serialNumber: nil,
+            usbVersion: nil,
+            speedRaw: speedRaw,
+            busPowerMA: nil,
+            currentMA: nil,
+            rawProperties: [:]
+        )
+    }
+
+    /// A hub at the bus root plus one child behind it: depths 0 and 1.
+    private var hubAndChild: [USBDevice] {
+        [
+            device(id: 1, locationID: 0x0110_0000, name: "USB3 HUB", speedRaw: 4),
+            device(id: 2, locationID: 0x0111_0000, name: "USB 10_100_1000 LAN", speedRaw: 3),
+        ]
+    }
+
+    private func displayPort(productName: String?) -> IOPortTransportStateDisplayPort {
+        IOPortTransportStateDisplayPort(
+            link: DisplayPortLink(
+                active: true, laneCount: 2, maxLaneCount: 4,
+                linkRate: 0, tunneled: true, hpdState: 1
+            ),
+            monitor: MonitorInfo(
+                manufacturerName: nil,
+                productName: productName,
+                productId: nil,
+                yearOfManufacture: nil,
+                edid: nil
+            )
+        )
+    }
+
+    // MARK: - No Thunderbolt device: plain tree, unchanged
+
+    @Test("No TB switches: rows are the plain USB tree with original depths")
+    func noThunderboltPlainTree() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: hubAndChild,
+            port: makePort(),
+            thunderboltSwitches: [],
+            displayPorts: []
+        )
+        try #require(rows.count == 2)
+        #expect(rows[0] == ConnectedDeviceTree.Row(label: "USB3 HUB - Super Speed+ (10 Gbps)", depth: 0))
+        #expect(rows[1] == ConnectedDeviceTree.Row(label: "USB 10_100_1000 LAN - Super Speed (5 Gbps)", depth: 1))
+    }
+
+    @Test("No TB switches and a monitor: no display row (the banner covers it)")
+    func noThunderboltNoDisplayRow() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: hubAndChild,
+            port: makePort(),
+            thunderboltSwitches: [],
+            displayPorts: [displayPort(productName: "LEN G34w-10")]
+        )
+        try #require(rows.count == 2, "A monitor without a TB root must not add a row")
+        #expect(!rows.contains { $0.label.contains("G34w") })
+    }
+
+    @Test("Nothing connected: empty rows")
+    func emptyInputEmptyRows() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [],
+            displayPorts: []
+        )
+        #expect(rows.isEmpty)
+    }
+
+    // MARK: - Thunderbolt device downstream: rooted tree
+
+    @Test("Dock present: root row names the dock with the 40 Gbps link, USB depths shift by one")
+    func dockRootRow() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: hubAndChild,
+            port: makePort(),
+            thunderboltSwitches: [hostRoot(), dockSwitch()],
+            displayPorts: []
+        )
+        try #require(rows.count == 3)
+        #expect(rows[0] == ConnectedDeviceTree.Row(
+            label: "Ugreen Group Limited TBT5 Docking Station 10-in-1 - Thunderbolt link active at 40 Gbps",
+            depth: 0
+        ))
+        #expect(rows[1].depth == 1 && rows[1].label.hasPrefix("USB3 HUB"))
+        #expect(rows[2].depth == 2 && rows[2].label.hasPrefix("USB 10_100_1000 LAN"))
+    }
+
+    @Test("TB5 dual-lane link labels 80 Gbps")
+    func tb5LinkLabels80() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [hostRoot(), dockSwitch(speed: .tb5, widthRaw: 0x2)],
+            displayPorts: []
+        )
+        try #require(rows.count == 1)
+        #expect(rows[0].label.hasSuffix("Thunderbolt link active at 80 Gbps"))
+    }
+
+    @Test("Asymmetric TB5 link falls back to the per-lane label, never a false total")
+    func asymmetricFallsBack() throws {
+        // 3 TX / 1 RX (raw 0x4): no single honest total exists.
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [hostRoot(), dockSwitch(speed: .tb5, widthRaw: 0x4)],
+            displayPorts: []
+        )
+        try #require(rows.count == 1)
+        #expect(rows[0].label.contains("TX"), "Asymmetric link must show the per-lane form: \(rows[0].label)")
+        #expect(!rows[0].label.contains("Thunderbolt link active at"))
+    }
+
+    @Test("Idle lane: root row is the bare device name, no link suffix")
+    func idleLaneNameOnly() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [hostRoot(), dockSwitch(speed: nil, widthRaw: 0x0)],
+            displayPorts: []
+        )
+        try #require(rows.count == 1)
+        #expect(rows[0] == ConnectedDeviceTree.Row(label: "Ugreen Group Limited TBT5 Docking Station 10-in-1", depth: 0))
+    }
+
+    @Test("Dock with no USB devices: root row alone")
+    func dockAloneStillRoots() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [hostRoot(), dockSwitch()],
+            displayPorts: []
+        )
+        try #require(rows.count == 1)
+        #expect(rows[0].depth == 0)
+    }
+
+    @Test("Daisy chain: the root row is the first hop, not the deeper device")
+    func daisyChainFirstHop() throws {
+        let deeper = dockSwitch(id: 300, parent: 200, vendor: "Samsung", model: "X5")
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [hostRoot(), dockSwitch(), deeper],
+            displayPorts: []
+        )
+        try #require(rows.count == 1)
+        #expect(rows[0].label.contains("TBT5 Docking Station"))
+        #expect(!rows.contains { $0.label.contains("X5") })
+    }
+
+    @Test("Daisy-chained dock with a slower downstream lane: the root row shows the upstream (Mac-facing) leg")
+    func upstreamLaneWinsOverDownstream() throws {
+        // Downstream lane listed FIRST (port 3, TB3 dual = 20 Gbps) so a
+        // naive first-active-lane pick would label 20; the upstream lane
+        // (port 1 == upstreamPortNumber, TB4 dual = 40 Gbps) must win.
+        let mixedDock = dockSwitch(ports: [
+            lanePort(speed: .tb3, widthRaw: 0x2, portNumber: 3),
+            lanePort(speed: .usb4Tb4, widthRaw: 0x2, portNumber: 1),
+        ])
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [hostRoot(), mixedDock],
+            displayPorts: []
+        )
+        try #require(rows.count == 1)
+        #expect(rows[0].label.hasSuffix("Thunderbolt link active at 40 Gbps"),
+            "Root row must describe the Mac-facing leg, got: \(rows[0].label)")
+    }
+
+    @Test("Different socket: another port's dock never roots this port's tree")
+    func otherSocketNoRoot() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: hubAndChild,
+            port: makePort(serviceName: "Port-USB-C@1"),
+            thunderboltSwitches: [hostRoot(socketID: "4"), dockSwitch()],
+            displayPorts: []
+        )
+        try #require(rows.count == 2)
+        #expect(rows[0].depth == 0 && rows[0].label.hasPrefix("USB3 HUB"))
+    }
+
+    @Test("Power-only port (MagSafe shape): no root row even with a fabric present")
+    func magSafeNoRoot() throws {
+        // transportsSupported without data transports fails the carriesData
+        // gate inside ThunderboltTopology.socketID(for:), issue #195.
+        let rows = ConnectedDeviceTree.rows(
+            devices: hubAndChild,
+            port: makePort(serviceName: "Port-USB-C@4", transportsSupported: ["CC"]),
+            thunderboltSwitches: [hostRoot(), dockSwitch()],
+            displayPorts: []
+        )
+        try #require(rows.count == 2)
+        #expect(rows[0].depth == 0 && rows[0].label.hasPrefix("USB3 HUB"))
+    }
+
+    // MARK: - Display rows
+
+    @Test("Monitor under the dock: display row at depth 1, before the USB branch")
+    func displayRowUnderRoot() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: hubAndChild,
+            port: makePort(),
+            thunderboltSwitches: [hostRoot(), dockSwitch()],
+            displayPorts: [displayPort(productName: "LEN G34w-10")]
+        )
+        try #require(rows.count == 4)
+        #expect(rows[1] == ConnectedDeviceTree.Row(label: "Display: LEN G34w-10", depth: 1))
+        #expect(rows[2].label.hasPrefix("USB3 HUB"), "USB branch must follow the display row")
+    }
+
+    @Test("Two monitors: one row each")
+    func twoMonitorsTwoRows() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [hostRoot(), dockSwitch()],
+            displayPorts: [displayPort(productName: "LEN G34w-10"), displayPort(productName: "DELL U2723QE")]
+        )
+        try #require(rows.count == 3)
+        #expect(rows[1].label == "Display: LEN G34w-10")
+        #expect(rows[2].label == "Display: DELL U2723QE")
+    }
+
+    @Test("Monitor with no readable name: bare Display label")
+    func namelessDisplayRow() throws {
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [hostRoot(), dockSwitch()],
+            displayPorts: [displayPort(productName: nil)]
+        )
+        try #require(rows.count == 2)
+        #expect(rows[1] == ConnectedDeviceTree.Row(label: "Display", depth: 1))
+    }
+
+    // MARK: - "video output N" display suffix (TB link tree root, Phase B)
+
+    private static let videoUUID = "AAAAAAAA-0000-0000-0000-000000000001"
+    private static let videoUUID2 = "BBBBBBBB-0000-0000-0000-000000000002"
+
+    @Test("Single display + single cross-cable video tunnel: display row gets the 'video output N' suffix")
+    func singleDisplaySingleVideoTunnelSuffix() throws {
+        let root = hostRoot(laneHopTable: [hopEntry(pathUUID: Self.videoUUID)])
+        let dock = dockSwitch(ports: [
+            lanePort(speed: .usb4Tb4, widthRaw: 0x2),
+            dpPort(portNumber: 5, hopTable: [hopEntry(pathUUID: Self.videoUUID)]),
+        ])
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [root, dock],
+            displayPorts: [displayPort(productName: "LEN G34w-10")]
+        )
+        try #require(rows.count == 2)
+        #expect(rows[1] == ConnectedDeviceTree.Row(
+            label: "Display: LEN G34w-10 \u{00B7} video output 5",
+            depth: 1
+        ))
+    }
+
+    @Test("Two displays: no suffix, even with exactly one cross-cable video tunnel")
+    func twoDisplaysNoSuffix() throws {
+        let root = hostRoot(laneHopTable: [hopEntry(pathUUID: Self.videoUUID)])
+        let dock = dockSwitch(ports: [
+            lanePort(speed: .usb4Tb4, widthRaw: 0x2),
+            dpPort(portNumber: 5, hopTable: [hopEntry(pathUUID: Self.videoUUID)]),
+        ])
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [root, dock],
+            displayPorts: [displayPort(productName: "LEN G34w-10"), displayPort(productName: "DELL U2723QE")]
+        )
+        try #require(rows.count == 3)
+        #expect(rows[1].label == "Display: LEN G34w-10", "No suffix: which tunnel feeds which monitor is ambiguous")
+        #expect(rows[2].label == "Display: DELL U2723QE")
+    }
+
+    @Test("Two cross-cable video tunnels: no suffix, even with exactly one display")
+    func twoVideoTunnelsNoSuffix() throws {
+        let root = hostRoot(laneHopTable: [
+            hopEntry(pathUUID: Self.videoUUID),
+            hopEntry(pathUUID: Self.videoUUID2),
+        ])
+        let dock = dockSwitch(ports: [
+            lanePort(speed: .usb4Tb4, widthRaw: 0x2),
+            dpPort(portNumber: 5, hopTable: [hopEntry(pathUUID: Self.videoUUID)]),
+            dpPort(portNumber: 6, hopTable: [hopEntry(pathUUID: Self.videoUUID2)]),
+        ])
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [root, dock],
+            displayPorts: [displayPort(productName: "LEN G34w-10")]
+        )
+        try #require(rows.count == 2)
+        #expect(rows[1].label == "Display: LEN G34w-10", "Ambiguous: two candidate tunnels for one display")
+    }
+
+    @Test("Tunnel terminating at the host root itself (depth 0): not cross-cable, no suffix")
+    func hostInternalTunnelNoSuffix() throws {
+        // The video UUID is carried only by a protocol adapter ON the host
+        // root: segmentCount 1, terminal = the root itself (depth 0). Not
+        // cross-cable per the locked design rule, so ActiveTunnelPresentation's
+        // crossCableTunnels filter (shared with this suffix) drops it. A
+        // separate, unrelated dock is present purely so a root row exists to
+        // hang the display row under.
+        let root = IOThunderboltSwitch(
+            id: 100,
+            className: "IOThunderboltSwitchType5",
+            vendorID: 1452,
+            vendorName: "Apple Inc.",
+            modelName: "Mac",
+            routerID: 0,
+            depth: 0,
+            routeString: 0,
+            upstreamPortNumber: 0,
+            maxPortNumber: 8,
+            supportedSpeed: SupportedSpeedMask(rawValue: 0xC),
+            ports: [
+                lanePort(speed: .usb4Tb4, widthRaw: 0x2, socketID: "4"),
+                dpPort(portNumber: 9, hopTable: [hopEntry(pathUUID: Self.videoUUID)]),
+            ],
+            parentSwitchUID: nil
+        )
+        let dock = dockSwitch()
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [root, dock],
+            displayPorts: [displayPort(productName: "LEN G34w-10")]
+        )
+        try #require(rows.count == 2)
+        #expect(rows[1].label == "Display: LEN G34w-10", "Host-internal tunnel must not produce a suffix")
+    }
+
+    @Test("Dock-internal-only video-kind UUID (distinctSwitchCount 1): no 'video output N' suffix, even with one display and one candidate tunnel")
+    func dockInternalOnlyVideoTunnelNoSuffix() throws {
+        // Only the dock's own DP adapter carries this UUID; the host
+        // root's lane never sees it (`hostRoot()` defaults to an empty
+        // `laneHopTable`). Mirrors the real ASUS-internal PCIe UUID
+        // 93B7660C in research/dumps/tb-fabric/052-joeshaw-..., with a DP
+        // adapter instead of PCIe so it exercises the video-suffix path
+        // this suite covers.
+        let root = hostRoot()
+        let dock = dockSwitch(ports: [
+            lanePort(speed: .usb4Tb4, widthRaw: 0x2),
+            dpPort(portNumber: 5, hopTable: [hopEntry(pathUUID: Self.videoUUID)]),
+        ])
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [root, dock],
+            displayPorts: [displayPort(productName: "LEN G34w-10")]
+        )
+        try #require(rows.count == 2)
+        #expect(rows[1].label == "Display: LEN G34w-10", "Dock-internal-only tunnel must not produce a suffix")
+    }
+
+    @Test("No displays: a cross-cable video tunnel present doesn't change the no-display case")
+    func noDisplayCaseUnchangedWithVideoTunnel() throws {
+        let root = hostRoot(laneHopTable: [hopEntry(pathUUID: Self.videoUUID)])
+        let dock = dockSwitch(ports: [
+            lanePort(speed: .usb4Tb4, widthRaw: 0x2),
+            dpPort(portNumber: 5, hopTable: [hopEntry(pathUUID: Self.videoUUID)]),
+        ])
+        let rows = ConnectedDeviceTree.rows(
+            devices: [],
+            port: makePort(),
+            thunderboltSwitches: [root, dock],
+            displayPorts: []
+        )
+        try #require(rows.count == 1, "Root row alone: no display rows to suffix")
+        #expect(rows[0].depth == 0)
+    }
+}
+
+/// Corpus-replay sweep: with no Thunderbolt switches, `ConnectedDeviceTree`
+/// must reproduce the USB tree exactly as `USBDeviceNode` builds it, for
+/// every real device topology in the corpus. This pins the "plain tree,
+/// unchanged" contract against real machines, not just the two-device
+/// fixture above. The dock-present path can't be corpus-replayed (no
+/// test-kit probe captures IOThunderboltSwitch dumps); it is covered by the
+/// fixture tests.
+@Suite("ConnectedDeviceTree: corpus sweep")
+struct ConnectedDeviceTreeCorpusTests {
+
+    private static let probeRoot: URL = {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()   // WhatCableCoreTests
+            .deletingLastPathComponent()   // Tests
+            .deletingLastPathComponent()   // repo root
+            .appendingPathComponent("research/customer-probes")
+    }()
+
+    // Probe-38 parsing: deliberate duplicate of the parser in
+    // TunnelledDeviceGroupingCorpusTests (same target; Swift `private` is
+    // file-scoped, and these sweeps are kept self-contained on purpose).
+    private static func parseProbe38(_ text: String) -> [USBDevice] {
+        text.components(separatedBy: "--- Device[").dropFirst().compactMap { block in
+            func value(_ key: String) -> String? {
+                for line in block.split(separator: "\n") {
+                    let trimmed = line.trimmingCharacters(in: .whitespaces)
+                    guard trimmed.hasPrefix(key),
+                          trimmed.dropFirst(key.count).first == " " || trimmed.dropFirst(key.count).first == "=",
+                          let eq = trimmed.firstIndex(of: "=")
+                    else { continue }
+                    return trimmed[trimmed.index(after: eq)...]
+                        .trimmingCharacters(in: .whitespaces)
+                        .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+                }
+                return nil
+            }
+            func hex(_ key: String) -> UInt64? {
+                guard var raw = value(key) else { return nil }
+                if raw.hasPrefix("0x") || raw.hasPrefix("0X") { raw = String(raw.dropFirst(2)) }
+                return UInt64(raw, radix: 16)
+            }
+            guard let loc = hex("locationID").map({ UInt32(truncatingIfNeeded: $0) }) else { return nil }
+            return USBDevice(
+                id: UInt64(loc),
+                locationID: loc,
+                vendorID: hex("idVendor").map { UInt16(truncatingIfNeeded: $0) } ?? 0,
+                productID: hex("idProduct").map { UInt16(truncatingIfNeeded: $0) } ?? 0,
+                vendorName: value("USB Vendor Name"),
+                productName: value("USB Product Name"),
+                serialNumber: nil,
+                usbVersion: nil,
+                speedRaw: value("Device Speed").flatMap { UInt8($0) },
+                busPowerMA: nil,
+                currentMA: nil,
+                deviceClass: value("bDeviceClass").flatMap { UInt8($0) },
+                rawProperties: [:]
+            )
+        }
+    }
+
+    private static func port() -> AppleHPMInterface {
+        AppleHPMInterface(
+            id: 1, serviceName: "Port-USB-C@1",
+            className: "AppleHPMInterfaceType10",
+            portDescription: nil, portTypeDescription: "USB-C", portNumber: 1,
+            connectionActive: true, activeCable: nil, opticalCable: nil,
+            usbActive: nil, superSpeedActive: nil, usbModeType: nil,
+            usbConnectString: nil,
+            transportsSupported: ["CC", "USB2", "USB3", "CIO", "DisplayPort"],
+            transportsActive: ["CC", "USB3"], transportsProvisioned: [],
+            plugOrientation: nil, plugEventCount: nil, connectionCount: nil,
+            overcurrentCount: nil, pinConfiguration: [:], powerCurrentLimits: [],
+            firmwareVersion: nil, bootFlagsHex: nil, rawProperties: [:]
+        )
+    }
+
+    @Test("No-TB path reproduces USBDeviceNode's tree on every corpus topology")
+    func plainTreeMatchesCorpusTopologies() throws {
+        let folders = (try? FileManager.default.contentsOfDirectory(atPath: Self.probeRoot.path))?.sorted() ?? []
+        var swept = 0
+        var devicesSeen = 0
+        for folder in folders {
+            let url = Self.probeRoot.appendingPathComponent(folder).appendingPathComponent("38_usb_device_tree.json")
+            guard FileManager.default.fileExists(atPath: url.path),
+                  let data = try? Data(contentsOf: url),
+                  let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let text = root["output"] as? String
+            else { continue }
+            let devices = Self.parseProbe38(text)
+            guard !devices.isEmpty else { continue }
+            swept += 1
+            devicesSeen += devices.count
+
+            let rows = ConnectedDeviceTree.rows(
+                devices: devices, port: Self.port(),
+                thunderboltSwitches: [], displayPorts: []
+            )
+            let expected = USBDeviceNode.flatten(USBDeviceNode.buildTree(from: devices))
+            try #require(rows.count == expected.count, "\(folder): row count diverged from the USB tree")
+            for (row, node) in zip(rows, expected) {
+                // Exact-label equality against the legacy mapping (the exact
+                // string the removed renderer loops produced), so punctuation,
+                // speed text, and the Unknown fallback are all pinned, not
+                // just the product-name prefix.
+                let legacyLabel = "\(node.device.productName ?? String(localized: "Unknown", bundle: _coreLocalizedBundle)) - \(node.device.speedLabel)"
+                #expect(row == ConnectedDeviceTree.Row(label: legacyLabel, depth: node.depth),
+                    "\(folder): row diverged from the legacy rendering: \(row.label)")
+            }
+        }
+        // Fixture floor: at least the tracked probe-38 replay fixture must be
+        // present even on a fresh clone; a full on-disk corpus sweeps far more.
+        // If this fires at 0, the sweep is vacuous, not passing.
+        #expect(swept >= 1, "Sweep ran on zero folders; corpus probes missing")
+        #expect(devicesSeen > 0)
+    }
+}

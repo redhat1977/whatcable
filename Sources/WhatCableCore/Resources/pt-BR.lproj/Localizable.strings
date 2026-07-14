@@ -405,6 +405,8 @@
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "Conecte um monitor via USB-C ou Thunderbolt para ver o que o link está entregando.";
 "%@ port %lld" = "%@ porta %lld";
 "Display" = "Monitor";
+"Display: %@" = "Monitor: %@";
+"Display: %@ · video output %lld" = "Monitor: %1$@ · saída de vídeo %2$lld";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "nativo %lld Hz";
 "Top mode needs" = "Modo máximo precisa de";
@@ -473,6 +475,11 @@
 "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below." = "Tela conectada. Nenhuma energia está sendo enviada por esta porta. A energia recebida aparece abaixo em «Entrada de energia do sistema».";
 "Connected to %lld Thunderbolt devices: %@" = "Conectado a %1$lld dispositivos Thunderbolt: %2$@";
 "Thunderbolt fabric:" = "Malha Thunderbolt:";
+"Active tunnels:" = "Túneis ativos:";
+"Video" = "Vídeo";
+"USB data" = "dados USB";
+"PCIe data" = "dados PCIe";
+"adapter %lld" = "adaptador %lld";
 
 /* Active-layout contradiction note (DAR-30) - placeholder, see en.lproj */
 "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)" = "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)";

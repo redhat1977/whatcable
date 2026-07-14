@@ -158,6 +158,16 @@ struct ThunderboltLinkFromTests {
         #expect(AdapterType.from(rawValue: 2097410) == .usb3Up)
     }
 
+    @Test("USB Gen T adapter type decoding (TB5-era USB tunnel, 0x210101 / 0x210102)")
+    func usbGenTAdapterTypeDecoding() {
+        #expect(AdapterType.from(rawValue: 0x210101) == .usbGenTDown)
+        #expect(AdapterType.from(rawValue: 0x210102) == .usbGenTUp)
+        // research/dumps/tb-fabric/052-nofr1ends-m5pro-ugreen-tb5-dock.md
+        // lines 215-217 print this as decimal 2162945, Description "USB
+        // Gen T Adapter".
+        #expect(AdapterType.from(rawValue: 2162945) == .usbGenTDown)
+    }
+
     // MARK: - Steve's Samsung C34J79x downstream switch (TB3)
 
     /// Switch #3 from issue #52 comment 1: Samsung C34J79x at Depth=1.

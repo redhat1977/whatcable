@@ -406,6 +406,8 @@
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "通过 USB-C 或 Thunderbolt 连接显示器，以查看链路当前传输的数据。";
 "%@ port %lld" = "%1$@ 端口 %2$lld";
 "Display" = "显示器";
+"Display: %@" = "显示器：%@";
+"Display: %@ · video output %lld" = "显示器：%1$@ · 视频输出 %2$lld";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "原生 %lldHz";
 "Top mode needs" = "最高模式需要";
@@ -474,6 +476,11 @@
 "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below." = "已连接显示器。此端口未输出电力。输入的电力显示在下方的“系统电源输入”中。";
 "Connected to %lld Thunderbolt devices: %@" = "已连接 %1$lld 个 Thunderbolt 设备：%2$@";
 "Thunderbolt fabric:" = "Thunderbolt 拓扑：";
+"Active tunnels:" = "活动隧道：";
+"Video" = "视频";
+"USB data" = "USB 数据";
+"PCIe data" = "PCIe 数据";
+"adapter %lld" = "适配器 %lld";
 
 /* Active-layout contradiction note (DAR-30) - placeholder, see en.lproj */
 "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)" = "E-marker 报告为无源，但包含有源线缆结构（可能是 e-marker 编程错误）";

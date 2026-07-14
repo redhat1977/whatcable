@@ -405,6 +405,8 @@
 "Connect a monitor over USB-C or Thunderbolt to see what the link is delivering." = "Bağlantının ne sağladığını görmek için USB-C veya Thunderbolt üzerinden bir monitör bağlayın.";
 "%@ port %lld" = "%1$@ port %2$lld";
 "Display" = "Ekran";
+"Display: %@" = "Ekran: %@";
+"Display: %@ · video output %lld" = "Ekran: %1$@ · video çıkışı %2$lld";
 "%lld × %lld" = "%lld × %lld";
 "native %lldHz" = "doğal %lldHz";
 "Top mode needs" = "En yüksek mod gereksinimi";
@@ -473,6 +475,11 @@
 "Display connected. No power is being sent out of this port. Incoming power shows in System Power Input below." = "Ekran bağlı. Bu porttan güç gönderilmiyor. Gelen güç aşağıdaki Sistem Güç Girişi bölümünde gösteriliyor.";
 "Connected to %lld Thunderbolt devices: %@" = "%1$lld Thunderbolt aygıtına bağlandı: %2$@";
 "Thunderbolt fabric:" = "Thunderbolt topolojisi:";
+"Active tunnels:" = "Etkin tüneller:";
+"Video" = "Video";
+"USB data" = "USB verisi";
+"PCIe data" = "PCIe verisi";
+"adapter %lld" = "adaptör %lld";
 
 /* Active-layout contradiction note (DAR-30) - placeholder, see en.lproj */
 "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)" = "E-marker reports passive, but carries active-cable structure (may be a mis-programmed e-marker)";
