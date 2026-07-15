@@ -141,6 +141,7 @@ hand-maintained markdown table; format may change once the consumer exists.
 | Wokyis M5 dock bundled Thunderbolt 5 cable, 0.5 m (Sumitomo silicon, 80 Gbps variant of PID 0x0714) | `0x20C2` | `0x0714` | `0x460A2644` | Sumitomo Electric Ind., Ltd., Optical Comm. R&D Lab | none | USB4 Gen 4 (80 Gbps, Thunderbolt 5 class) | 5 A / 50 V (240 W) | passive | [#405](https://github.com/darrylmorley/whatcable/issues/405) |
 | Cable Matters active Thunderbolt 5 cable, 2 m | `0x2B1D` | `0x192F` | `0x426A5E5C` | Lintes Technology Co., Ltd. | none | USB4 Gen 4 (80 Gbps, Thunderbolt 5 class) | 5 A / 50 V (240 W) | active | [#406](https://github.com/darrylmorley/whatcable/issues/406) |
 | OWC Thunderbolt 5 cable, 12 in (Lintes silicon) | `0x2B1D` | `0x153E` | `0x110A2644` | Lintes Technology Co., Ltd. | `0x5FD` | USB4 Gen 4 (80 Gbps, Thunderbolt 5 class) | 5 A / 50 V (240 W) | passive | [#408](https://github.com/darrylmorley/whatcable/issues/408) |
+| Silkland cable sold as USB4, e-marker reports 10 Gbps 240W | `0x3678` | `0x0000` | `0x00084652` | (Silkland) Shenzhen Guanhai Technology Co., Ltd. | `0x281E` | USB 3.2 Gen 2 (10 Gbps) | 5 A / 50 V (240 W) | passive | [#431](https://github.com/darrylmorley/whatcable/issues/431) |
 
 Sorted by VID. The zeroed-fingerprint entry is parked at the bottom because it
 is identity-less.

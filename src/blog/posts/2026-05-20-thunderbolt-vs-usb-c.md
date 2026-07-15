@@ -100,6 +100,8 @@ Every USB-C cable rated above 60W and above USB 2.0 speeds contains an e-marker 
 
 [WhatCable](/) reads the e-marker and shows you what the cable is. Not what you hoped it was, not what the box claimed, what the cable itself is telling the Mac. If you've ever wondered whether the "Thunderbolt cable" you bought online is actually Thunderbolt, this is how you check. You can also see how your cable rates against known references in the [cables database](/cables).
 
+There is one more trick. On a Thunderbolt or USB4 connection, WhatCable does not just trust the chip. It reads the speed the Mac's controller actually negotiated with the cable and shows it next to the e-marker's claim, so a cable that performs better than its chip admits gets caught. That only works on a live Thunderbolt or USB4 link, and the measured figure is a floor: at least this fast, sometimes more if the device at the far end was the limit.
+
 ![WhatCable showing a USB-C cable identified as USB4 Gen 3, 40 Gbps, Thunderbolt 4 class, rated for 5A at 50V, with a confirmation that the connected 10 Gbps drive is running at full device speed](https://images.whatcable.uk/1779375774954-whatcable-screenshot-usb4-cable-readout.webp "WhatCable identifying a USB4 cable in the menu bar")
 
 ## Compatibility, both directions

@@ -1344,6 +1344,20 @@
     "xid" : "0x10536"
   },
   {
+    "brand" : "Silkland cable sold as USB4, e-marker reports 10 Gbps 240W",
+    "cableVDO" : "0x00084652",
+    "issueNum" : "#431",
+    "issueURL" : "https:\/\/github.com\/darrylmorley\/whatcable\/issues\/431",
+    "pid" : "0x0000",
+    "power" : "5 A \/ 50 V (240 W)",
+    "registered" : true,
+    "speed" : "USB 3.2 Gen 2 (10 Gbps)",
+    "type" : "passive",
+    "vendor" : "(Silkland) Shenzhen Guanhai Technology Co., Ltd.",
+    "vid" : "0x3678",
+    "xid" : "0x281E"
+  },
+  {
     "brand" : "Silkland USB4 80 Gbps cable 3.3 ft, Amazon",
     "cableVDO" : "0x000A2644",
     "issueNum" : "#98",
