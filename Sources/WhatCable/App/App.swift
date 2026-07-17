@@ -132,6 +132,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             log.notice("launch: display mode applied, menuBar=\(AppSettings.shared.useMenuBarMode)")
         }
 
+        // No-op on Apple Silicon, i.e. on every supported Mac. Deferred a
+        // runloop turn so the modal doesn't run inside
+        // applicationDidFinishLaunching, and so whatever it sits in front of
+        // (status item or window) already exists.
+        DispatchQueue.main.async {
+            UnsupportedArchitectureNotice.showIfNeeded()
+        }
+
         // Live-switch when the user flips the toggle in Settings.
         AppSettings.shared.$useMenuBarMode
             .removeDuplicates()

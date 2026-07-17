@@ -170,3 +170,9 @@
 /* USB probing compatibility toggle (issue #429). */
 "Skip deep USB probing" = "Salta il sondaggio USB approfondito";
 "Stops WhatCable reading capability info from USB devices. Turn on if a KVM switch or hub misbehaves (relay clicking, or keyboard and mouse dropping) when WhatCable runs." = "Impedisce a WhatCable di leggere le informazioni sulle capacità dei dispositivi USB. Attivala se uno switch KVM o un hub si comporta male (relè che scatta, o tastiera e mouse che si disconnettono) quando WhatCable è in esecuzione.";
+
+/* Intel Macs are unsupported; notice shown on every launch. */
+"WhatCable can't read cables on this Mac" = "WhatCable non può leggere i cavi su questo Mac";
+"This Mac has an Intel processor. WhatCable gets its cable and port data from Apple Silicon's port controller, and Intel Macs don't expose it, so the app will show nothing useful.\n\nIt'll stay open if you want to look around, but there's nothing behind it." = "Questo Mac ha un processore Intel. WhatCable ricava i dati di cavi e porte dal controller delle porte di Apple Silicon, che i Mac Intel non espongono, quindi l'app non mostrerà nulla di utile.\n\nResterà aperta se vuoi dare un'occhiata, ma dietro non c'è nulla.";
+"OK" = "OK";
+"Learn more" = "Scopri di più";

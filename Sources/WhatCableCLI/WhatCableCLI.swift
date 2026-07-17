@@ -82,9 +82,20 @@ struct WhatCableCLI {
             exit(2)
         }
         if let cmd = matchingCommands.first {
+            // Only the hardware-reading commands (--dashboard, --monitor,
+            // --test-kit) have nothing to show on Intel. The licence ones
+            // (--activate, --licence, ...) are network + UserDefaults and work
+            // fine there, so warning "the output below will be empty" at them
+            // would just be wrong.
+            if cmd.readsCableData { warnIfUnsupportedArchitecture() }
             await cmd.run(args)
             return
         }
+
+        // Everything from here down reads the hardware (plain, --raw, --json,
+        // --watch, --report), so all of it is empty on Intel. On stderr, so it
+        // can't corrupt --json / --monitor-json output on stdout.
+        warnIfUnsupportedArchitecture()
 
         let showRaw = args.contains("--raw")
         let asJSON = args.contains("--json")
@@ -123,6 +134,19 @@ struct WhatCableCLI {
             FileHandle.standardError.write(Data("whatcable: \(error)\n".utf8))
             exit(1)
         }
+    }
+
+    /// Intel Macs use Titan Ridge / JHL9580 controllers, which don't publish
+    /// the IOKit port-controller data every reading is built on, so the output
+    /// will be empty. Not fatal: the user may still want to see for themselves.
+    ///
+    /// The check is a runtime sysctl read, deliberately NOT `#if arch(x86_64)`:
+    /// Rosetta runs our Intel slice on Apple Silicon, so a slice check would
+    /// print this on a Mac where everything works. See
+    /// `DarwinSystemInfo.isIntelHardware`.
+    static func warnIfUnsupportedArchitecture(isIntel: Bool = DarwinSystemInfo.isIntelHardware()) {
+        guard isIntel else { return }
+        FileHandle.standardError.write(Data("whatcable: Intel Macs are unsupported. This Mac doesn't expose the port-controller data WhatCable reads, so the output below will be empty.\n".utf8))
     }
 
     @MainActor static var helpText: String {
